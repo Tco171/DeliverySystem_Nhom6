@@ -1,0 +1,3934 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Express — Hợp đồng tích hợp backend",
+    "version": "0.2.0",
+    "description": "Frontend HTTP-only ngày 02/10/2026. Các endpoint cũ giữ nguyên. Register tạo shop rồi yêu cầu đăng nhập; không tự tạo session. Cookie và CSRF cần backend triển khai."
+  },
+  "servers": [
+    {
+      "url": "https://localhost:7001/api/v1",
+      "description": "Ví dụ; thay bằng URL backend thực tế"
+    }
+  ],
+  "security": [
+    {
+      "cookieSession": []
+    }
+  ],
+  "paths": {
+    "/auth/session": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Lấy phiên; trả JSON null nếu chưa đăng nhập.",
+        "description": "Quyền đề xuất: Ẩn danh/đã đăng nhập. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionUser"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Đăng nhập và thiết lập cookie phiên; không trả role do client tự chọn.",
+        "description": "Quyền đề xuất: Ẩn danh. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              },
+              "example": {
+                "email": "{{email}}",
+                "password": "{{password}}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Hủy phiên và trả JSON {success:true}; frontend chưa xử lý 204.",
+        "description": "Quyền đề xuất: Đã đăng nhập. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pickup-locations": {
+      "get": {
+        "operationId": "listPickupLocations",
+        "summary": "Danh sách điểm lấy hàng của shop trong phiên.",
+        "description": "Quyền đề xuất: Shop. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "pickup-locations"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PickupLocation"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPickupLocation",
+        "summary": "Tạo điểm lấy hàng; tên duy nhất trong từng shop.",
+        "description": "Quyền đề xuất: Shop. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "pickup-locations"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupLocation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupLocationInput"
+              },
+              "example": {
+                "name": "Cửa hàng chính",
+                "contactName": "Shop Minh Họa",
+                "contactPhone": "0900000001",
+                "address": "Địa chỉ mẫu, TP. Hồ Chí Minh"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments": {
+      "get": {
+        "operationId": "list",
+        "summary": "Server lọc quyền: đơn của shop, đơn được giao cho nhân viên hoặc phạm vi điều hành.",
+        "description": "Quyền đề xuất: Shop/Staff/Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Shipment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create",
+        "summary": "Kiểm tra quoteId còn hiệu lực, thuộc shop và khớp dữ liệu; tạo đơn và sự kiện đầu tiên.",
+        "description": "Quyền đề xuất: Shop. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipmentInput"
+              },
+              "example": {
+                "senderName": "Shop Minh Họa",
+                "senderPhone": "0900000001",
+                "pickupAddress": "Địa chỉ lấy hàng mẫu, TP. Hồ Chí Minh",
+                "recipientName": "Người nhận mẫu",
+                "recipientPhone": "0900000002",
+                "deliveryAddress": "Địa chỉ giao hàng mẫu, TP. Hồ Chí Minh",
+                "goods": "Áo thun",
+                "weightKg": 1,
+                "lengthCm": 20,
+                "widthCm": 15,
+                "heightCm": 10,
+                "declaredValue": 300000,
+                "codAmount": 300000,
+                "service": "standard",
+                "feePayer": "deduct_cod",
+                "notes": "Gọi trước khi giao",
+                "quoteId": "{{quoteId}}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments/{shipmentId}": {
+      "get": {
+        "operationId": "getShipment",
+        "summary": "Chi tiết theo mã vận đơn; phải kiểm tra quyền từng đơn, không phải tra cứu công khai.",
+        "description": "Quyền đề xuất: Shop/Staff/Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipping-quotes": {
+      "post": {
+        "operationId": "quote",
+        "summary": "Tính phí phía server; demo báo giá 5 phút, không phải chính sách đã chốt.",
+        "description": "Quyền đề xuất: Shop. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipping-quotes"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentInput"
+              },
+              "example": {
+                "senderName": "Shop Minh Họa",
+                "senderPhone": "0900000001",
+                "pickupAddress": "Địa chỉ lấy hàng mẫu, TP. Hồ Chí Minh",
+                "recipientName": "Người nhận mẫu",
+                "recipientPhone": "0900000002",
+                "deliveryAddress": "Địa chỉ giao hàng mẫu, TP. Hồ Chí Minh",
+                "goods": "Áo thun",
+                "weightKg": 1,
+                "lengthCm": 20,
+                "widthCm": 15,
+                "heightCm": 10,
+                "declaredValue": 300000,
+                "codAmount": 300000,
+                "service": "standard",
+                "feePayer": "deduct_cod",
+                "notes": "Gọi trước khi giao"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments/{shipmentId}/events": {
+      "post": {
+        "operationId": "transition",
+        "summary": "Ghi nhận lấy/giao/hoàn; server kiểm tra vai trò, phân công và trạng thái.",
+        "description": "Quyền đề xuất: Theo thao tác. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInput"
+              },
+              "example": {
+                "status": "picked_up",
+                "note": "Đã nhận kiện hàng",
+                "codCollected": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments/{shipmentId}/incidents": {
+      "get": {
+        "operationId": "listIncidents",
+        "summary": "Danh sách sự cố của đơn được phép xem.",
+        "description": "Quyền đề xuất: Shop/Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Incident"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createIncident",
+        "summary": "Gửi báo cáo; mô tả 10–2000 ký tự theo demo.",
+        "description": "Quyền đề xuất: Shop/Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentInput"
+              },
+              "example": {
+                "type": "damaged",
+                "description": "Bao bì kiện hàng bị hư hỏng, cần kiểm tra."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/incidents": {
+      "get": {
+        "operationId": "listAllIncidents",
+        "summary": "Danh sách sự cố theo phạm vi vận hành, mới nhất trước.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "incidents"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Incident"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/incidents/{incidentId}": {
+      "patch": {
+        "operationId": "updateIncident",
+        "summary": "open → investigating → resolved; giải quyết phải có kết quả.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "incidents"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentUpdateInput"
+              },
+              "example": {
+                "status": "investigating",
+                "resolution": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hubs": {
+      "get": {
+        "operationId": "listHubs",
+        "summary": "Danh mục kho được phép thao tác.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "hubs"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Hub"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments/{shipmentId}/hub-events": {
+      "post": {
+        "operationId": "recordHubAction",
+        "summary": "Nhập/xuất kho đồng thời ghi trạng thái, kho hiện tại và lịch sử.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubEventInput"
+              },
+              "example": {
+                "hubId": "{{hubId}}",
+                "action": "receive",
+                "note": "Đã kiểm đếm kiện hàng"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/shipments": {
+      "get": {
+        "operationId": "getShipmentReport",
+        "summary": "Lọc ngày tạo đơn; số liệu theo trạng thái hiện tại, không phải báo cáo lịch sử tại ngày chốt.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "reports"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD; bỏ tham số khi không giới hạn."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "YYYY-MM-DD; bỏ tham số khi không giới hạn."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pricing": {
+      "get": {
+        "operationId": "getPricing",
+        "summary": "Đọc giá đang áp dụng; cấu trúc hiện tại chưa chứa vùng và phiên bản.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "pricing"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "savePricing",
+        "summary": "Cập nhật bảng giá; không đổi phí đã chốt trên đơn.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "pricing"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricingConfig"
+              },
+              "example": {
+                "includedWeightKg": 1,
+                "volumetricDivisor": 5000,
+                "standard": {
+                  "baseFee": 25000,
+                  "extraKgFee": 5000
+                },
+                "express": {
+                  "baseFee": 40000,
+                  "extraKgFee": 5000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/dispatch": {
+      "get": {
+        "operationId": "listEmployees",
+        "summary": "Danh mục nhân viên kèm vùng, ca và sức chứa demo.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "employees"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeliveryEmployee"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipments/{shipmentId}/assignment": {
+      "put": {
+        "operationId": "assignShipment",
+        "summary": "Phân công hôm nay; demo phân công giao là bắt đầu giao ngay.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "shipments"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentInput"
+              },
+              "example": {
+                "staffId": "{{staffId}}",
+                "kind": "pickup",
+                "area": "TP. Hồ Chí Minh",
+                "shift": "morning"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settlements": {
+      "get": {
+        "operationId": "getSettlementData",
+        "summary": "Đơn đủ điều kiện và các kỳ; bắt buộc lọc theo shop phía server.",
+        "description": "Quyền đề xuất: Shop/Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "settlements"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSettlement",
+        "summary": "Tạo kỳ từ các đơn cùng shop, không trùng kỳ; tính tổng ở server.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "settlements"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settlement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSettlementInput"
+              },
+              "example": {
+                "shipmentIds": [
+                  "{{shipmentId}}"
+                ],
+                "adjustment": 0,
+                "adjustmentReason": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settlements/{settlementId}/complete": {
+      "post": {
+        "operationId": "completeSettlement",
+        "summary": "Ghi nhận kết quả thanh toán; không gọi chuyển tiền từ frontend.",
+        "description": "Quyền đề xuất: Operations. Hợp đồng tích hợp suy ra từ frontend, chưa xác nhận backend đã triển khai.",
+        "tags": [
+          "settlements"
+        ],
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID dạng chuỗi; dùng ID thực từ API, không giả định chỉ là UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công; trả JSON trực tiếp theo schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settlement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập/hết phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy trong phạm vi được phép",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xung đột trạng thái, báo giá, năng lực hoặc kỳ đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Lỗi máy chủ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Thông báo lỗi để hiển thị cho người dùng"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteSettlementInput"
+              },
+              "example": {
+                "paymentReference": "DEMO-PAY-001"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "summary": "Đăng ký tài khoản shop",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tạo thành công; frontend quay lại đăng nhập",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "409": {
+            "description": "Email đã tồn tại"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Status": {
+        "type": "string",
+        "enum": [
+          "pending_pickup",
+          "pickup_failed",
+          "picked_up",
+          "in_transit",
+          "at_hub",
+          "out_for_delivery",
+          "delivery_failed",
+          "delivered",
+          "returning",
+          "returned",
+          "return_confirmed"
+        ]
+      },
+      "FeePayer": {
+        "type": "string",
+        "enum": [
+          "shop_prepaid",
+          "recipient",
+          "deduct_cod"
+        ]
+      },
+      "ShipmentInput": {
+        "type": "object",
+        "properties": {
+          "senderName": {
+            "type": "string"
+          },
+          "senderPhone": {
+            "type": "string"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "recipientPhone": {
+            "type": "string"
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "goods": {
+            "type": "string"
+          },
+          "weightKg": {
+            "type": "number"
+          },
+          "lengthCm": {
+            "type": "number"
+          },
+          "widthCm": {
+            "type": "number"
+          },
+          "heightCm": {
+            "type": "number"
+          },
+          "declaredValue": {
+            "type": "number"
+          },
+          "codAmount": {
+            "type": "number"
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "express"
+            ]
+          },
+          "feePayer": {
+            "$ref": "#/components/schemas/FeePayer"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "senderName",
+          "senderPhone",
+          "pickupAddress",
+          "recipientName",
+          "recipientPhone",
+          "deliveryAddress",
+          "goods",
+          "weightKg",
+          "lengthCm",
+          "widthCm",
+          "heightCm",
+          "declaredValue",
+          "codAmount",
+          "service",
+          "feePayer",
+          "notes"
+        ]
+      },
+      "Quote": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fee": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fee",
+          "expiresAt"
+        ]
+      },
+      "TrackingEvent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_pickup",
+              "pickup_failed",
+              "picked_up",
+              "in_transit",
+              "at_hub",
+              "out_for_delivery",
+              "delivery_failed",
+              "delivered",
+              "returning",
+              "returned",
+              "return_confirmed"
+            ]
+          },
+          "at": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "at",
+          "note"
+        ]
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "currentHubId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_pickup",
+              "pickup_failed",
+              "picked_up",
+              "in_transit",
+              "at_hub",
+              "out_for_delivery",
+              "delivery_failed",
+              "delivered",
+              "returning",
+              "returned",
+              "return_confirmed"
+            ]
+          },
+          "fee": {
+            "type": "number"
+          },
+          "attempts": {
+            "type": "number"
+          },
+          "codCollected": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackingEvent"
+            }
+          },
+          "assignedStaffId": {
+            "type": "string"
+          },
+          "assignmentKind": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "delivery",
+              "return"
+            ]
+          },
+          "assignmentArea": {
+            "type": "string"
+          },
+          "assignmentDate": {
+            "type": "string"
+          },
+          "assignmentShift": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "afternoon"
+            ]
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderPhone": {
+            "type": "string"
+          },
+          "pickupAddress": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "recipientPhone": {
+            "type": "string"
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "goods": {
+            "type": "string"
+          },
+          "weightKg": {
+            "type": "number"
+          },
+          "lengthCm": {
+            "type": "number"
+          },
+          "widthCm": {
+            "type": "number"
+          },
+          "heightCm": {
+            "type": "number"
+          },
+          "declaredValue": {
+            "type": "number"
+          },
+          "codAmount": {
+            "type": "number"
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "express"
+            ]
+          },
+          "feePayer": {
+            "$ref": "#/components/schemas/FeePayer"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "fee",
+          "attempts",
+          "codCollected",
+          "createdAt",
+          "events",
+          "senderName",
+          "senderPhone",
+          "pickupAddress",
+          "recipientName",
+          "recipientPhone",
+          "deliveryAddress",
+          "goods",
+          "weightKg",
+          "lengthCm",
+          "widthCm",
+          "heightCm",
+          "declaredValue",
+          "codAmount",
+          "service",
+          "feePayer",
+          "notes"
+        ]
+      },
+      "TransitionInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_pickup",
+              "pickup_failed",
+              "picked_up",
+              "in_transit",
+              "at_hub",
+              "out_for_delivery",
+              "delivery_failed",
+              "delivered",
+              "returning",
+              "returned",
+              "return_confirmed"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "codCollected": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "note"
+        ]
+      },
+      "PickupLocation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contactName": {
+            "type": "string"
+          },
+          "contactPhone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contactName",
+          "contactPhone",
+          "address"
+        ]
+      },
+      "IncidentType": {
+        "type": "string",
+        "enum": [
+          "damaged",
+          "lost",
+          "incorrect_information",
+          "complaint",
+          "other"
+        ]
+      },
+      "IncidentStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "investigating",
+          "resolved"
+        ]
+      },
+      "IncidentInput": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "damaged",
+              "lost",
+              "incorrect_information",
+              "complaint",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "description"
+        ]
+      },
+      "Incident": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "shipmentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "investigating",
+              "resolved"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "damaged",
+              "lost",
+              "incorrect_information",
+              "complaint",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "shipmentId",
+          "status",
+          "createdAt",
+          "resolution",
+          "type",
+          "description"
+        ]
+      },
+      "Hub": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address"
+        ]
+      },
+      "HubAction": {
+        "type": "string",
+        "enum": [
+          "receive",
+          "dispatch"
+        ]
+      },
+      "ShipmentReport": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "delivered": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "returning": {
+            "type": "number"
+          },
+          "returned": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "codCollected": {
+            "type": "number"
+          },
+          "deliveredShippingFees": {
+            "type": "number"
+          },
+          "byStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_pickup",
+                    "pickup_failed",
+                    "picked_up",
+                    "in_transit",
+                    "at_hub",
+                    "out_for_delivery",
+                    "delivery_failed",
+                    "delivered",
+                    "returning",
+                    "returned",
+                    "return_confirmed"
+                  ]
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "status",
+                "count"
+              ]
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "generatedAt",
+          "total",
+          "delivered",
+          "failed",
+          "returning",
+          "returned",
+          "active",
+          "codCollected",
+          "deliveredShippingFees",
+          "byStatus"
+        ]
+      },
+      "ServiceRate": {
+        "type": "object",
+        "properties": {
+          "baseFee": {
+            "type": "number"
+          },
+          "extraKgFee": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "baseFee",
+          "extraKgFee"
+        ]
+      },
+      "PricingConfig": {
+        "type": "object",
+        "properties": {
+          "includedWeightKg": {
+            "type": "number"
+          },
+          "volumetricDivisor": {
+            "type": "number"
+          },
+          "standard": {
+            "$ref": "#/components/schemas/ServiceRate"
+          },
+          "express": {
+            "$ref": "#/components/schemas/ServiceRate"
+          }
+        },
+        "required": [
+          "includedWeightKg",
+          "volumetricDivisor",
+          "standard",
+          "express"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "shop",
+          "staff",
+          "operations"
+        ]
+      },
+      "SessionUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ]
+      },
+      "AssignmentKind": {
+        "type": "string",
+        "enum": [
+          "pickup",
+          "delivery",
+          "return"
+        ]
+      },
+      "Shift": {
+        "type": "string",
+        "enum": [
+          "morning",
+          "afternoon"
+        ]
+      },
+      "DeliveryEmployee": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "shift": {
+            "$ref": "#/components/schemas/Shift"
+          },
+          "capacity": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "area",
+          "shift",
+          "capacity"
+        ]
+      },
+      "AssignmentInput": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AssignmentKind"
+          },
+          "area": {
+            "type": "string"
+          },
+          "shift": {
+            "$ref": "#/components/schemas/Shift"
+          }
+        },
+        "required": [
+          "staffId",
+          "kind",
+          "area",
+          "shift"
+        ]
+      },
+      "SettlementLine": {
+        "type": "object",
+        "properties": {
+          "shipmentId": {
+            "type": "string"
+          },
+          "codCollected": {
+            "type": "number"
+          },
+          "shippingDeduction": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "shipmentId",
+          "codCollected",
+          "shippingDeduction"
+        ]
+      },
+      "Settlement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettlementLine"
+            }
+          },
+          "totalCod": {
+            "type": "number"
+          },
+          "shippingDeduction": {
+            "type": "number"
+          },
+          "adjustment": {
+            "type": "number"
+          },
+          "adjustmentReason": {
+            "type": "string"
+          },
+          "netAmount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed"
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "paymentReference": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "lines",
+          "totalCod",
+          "shippingDeduction",
+          "adjustment",
+          "adjustmentReason",
+          "netAmount",
+          "status",
+          "completedAt",
+          "paymentReference"
+        ]
+      },
+      "SettlementData": {
+        "type": "object",
+        "properties": {
+          "eligibleShipments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shipment"
+            }
+          },
+          "settlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Settlement"
+            }
+          }
+        },
+        "required": [
+          "eligibleShipments",
+          "settlements"
+        ]
+      },
+      "CreateSettlementInput": {
+        "type": "object",
+        "properties": {
+          "shipmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "adjustment": {
+            "type": "number"
+          },
+          "adjustmentReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shipmentIds",
+          "adjustment",
+          "adjustmentReason"
+        ]
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LogoutResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "PickupLocationInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contactName": {
+            "type": "string"
+          },
+          "contactPhone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "contactName",
+          "contactPhone",
+          "address"
+        ]
+      },
+      "CreateShipmentInput": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShipmentInput"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "quoteId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "quoteId"
+            ]
+          }
+        ]
+      },
+      "HubEventInput": {
+        "type": "object",
+        "properties": {
+          "hubId": {
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/HubAction"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hubId",
+          "action",
+          "note"
+        ]
+      },
+      "IncidentUpdateInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "investigating",
+              "resolved"
+            ]
+          },
+          "resolution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "resolution"
+        ]
+      },
+      "CompleteSettlementInput": {
+        "type": "object",
+        "properties": {
+          "paymentReference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentReference"
+        ]
+      },
+      "RegisterInput": {
+        "type": "object",
+        "required": [
+          "fullName",
+          "shopName",
+          "phone",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "shopName": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        }
+      },
+      "RegisterResult": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "cookieSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "Express.Session",
+        "description": "Tên cookie đề xuất; dùng HttpOnly server session. Không phải JWT hiện có."
+      }
+    }
+  }
+}
