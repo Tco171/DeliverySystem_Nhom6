@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+**/.vs/
+
+# .NET build
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Visual Studio user files
+*.user
+*.suo
+
+# Logs
+*.log
