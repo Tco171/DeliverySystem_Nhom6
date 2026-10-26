@@ -16,20 +16,74 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _order;
+  // Trạng thái đánh giá
+bool _ratingLoading = false;
+bool _ratingSaving = false;
+bool _ratingExists = false;
+
+int _selectedScore = 5;
+Future<void> _loadRating() async {
+  if (_order?['status'] != 'delivered') return;
+
+  setState(() {
+    _ratingLoading = true;
+  });
+
+  try {
+    final result = await ApiService.getRating(widget.shipmentId);
+
+    if (!mounted) return;
+
+    setState(() {
+      _ratingExists = result != null;
+
+      if (result != null) {
+        _selectedScore =
+            int.tryParse(result['score']?.toString() ?? '') ?? 5;
+        _commentController.text =
+            result['comment']?.toString() ?? '';
+      } else {
+        _selectedScore = 5;
+        _commentController.clear();
+      }
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Không tải được đánh giá: $e'),
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _ratingLoading = false;
+      });
+    }
+  }
+}
+
+final TextEditingController _commentController =
+    TextEditingController();
 
   static const Map<String, String> statuses = {
-    'pending_pickup': 'Chờ lấy hàng',
-    'pickup_failed': 'Lấy hàng thất bại',
-    'picked_up': 'Đã lấy hàng',
-    'in_transit': 'Đang vận chuyển',
-    'at_hub': 'Đã đến kho',
-    'out_for_delivery': 'Đang giao hàng',
-    'delivery_failed': 'Giao hàng thất bại',
-    'delivered': 'Giao thành công',
-    'returning': 'Đang hoàn hàng',
-    'returned': 'Đã giao hoàn',
-    'return_confirmed': 'Shop đã nhận hàng hoàn',
-  };
+  'created': 'Đã tạo đơn',
+  'pending': 'Chờ xử lý',
+  'pending_pickup': 'Chờ lấy hàng',
+  'pickup_failed': 'Lấy hàng thất bại',
+  'picked_up': 'Đã lấy hàng',
+  'in_transit': 'Đang vận chuyển',
+  'at_hub': 'Đã đến kho',
+  'out_for_delivery': 'Đang giao hàng',
+  'delivery_failed': 'Giao hàng thất bại',
+  'delivered': 'Giao thành công',
+  'returning': 'Đang hoàn hàng',
+  'returned': 'Đã giao hoàn',
+  'return_confirmed': 'Shop đã nhận hàng hoàn',
+  'cancelled': 'Đã hủy đơn',
+  'canceled': 'Đã hủy đơn',
+};
 
   @override
   void initState() {
@@ -53,8 +107,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       if (!mounted) return;
 
       setState(() {
-        _order = order;
-      });
+  _order = order;
+});
+
+if (order['status'] == 'delivered') {
+  await _loadRating();
+}
     } catch (e) {
       if (!mounted) return;
 
@@ -109,6 +167,158 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
     return '${buffer.toString()} đ';
   }
+  
+Widget _ratingSection() {
+  if (_order?['status'] != 'delivered') {
+    return const SizedBox.shrink();
+  }
+
+  if (_ratingLoading) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+
+  return _card('ĐÁNH GIÁ DỊCH VỤ', [
+    Text(
+      _ratingExists
+          ? 'Đánh giá hiện tại của bạn'
+          : 'Bạn hài lòng với dịch vụ chứ?',
+    ),
+    const SizedBox(height: 8),
+
+    Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(5, (index) {
+        final score = index + 1;
+
+        return IconButton(
+          onPressed: _ratingSaving
+              ? null
+              : () {
+                  setState(() {
+                    _selectedScore = score;
+                  });
+                },
+          icon: Icon(
+            score <= _selectedScore
+                ? Icons.star
+                : Icons.star_border,
+            color: Colors.amber.shade700,
+            size: 34,
+          ),
+        );
+      }),
+    ),
+
+    TextField(
+      controller: _commentController,
+      enabled: !_ratingSaving,
+      maxLines: 3,
+      maxLength: 500,
+      decoration: const InputDecoration(
+        labelText: 'Nhận xét',
+        hintText: 'Chia sẻ trải nghiệm của bạn...',
+        border: OutlineInputBorder(),
+        alignLabelWithHint: true,
+      ),
+    ),
+
+    const SizedBox(height: 12),
+
+    SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _ratingSaving ? null : _submitRating,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF123F31),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: _ratingSaving
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                _ratingExists
+                    ? 'CẬP NHẬT ĐÁNH GIÁ'
+                    : 'GỬI ĐÁNH GIÁ',
+              ),
+      ),
+    ),
+  ]);
+}
+
+Future<void> _submitRating() async {
+  if (_order?['status'] != 'delivered') {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Chỉ đánh giá khi đơn đã giao thành công.'),
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    _ratingSaving = true;
+  });
+
+  try {
+    if (_ratingExists) {
+      await ApiService.updateRating(
+        shipmentId: widget.shipmentId,
+        rating: _selectedScore,
+        comment: _commentController.text,
+      );
+    } else {
+      await ApiService.createRating(
+        shipmentId: widget.shipmentId,
+        rating: _selectedScore,
+        comment: _commentController.text,
+      );
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _ratingExists
+              ? 'Cập nhật đánh giá thành công!'
+              : 'Gửi đánh giá thành công!',
+        ),
+      ),
+    );
+
+    await _loadRating();
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Lỗi đánh giá: ${e.toString().replaceFirst('Exception: ', '')}',
+        ),
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _ratingSaving = false;
+      });
+    }
+  }
+}
+
+
 
   // =========================================================
   // BUILD
@@ -335,6 +545,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             }),
 
           const SizedBox(height: 8),
+          _ratingSection(),
+
+const SizedBox(height: 8),
 
           // =============================================
           // SỰ CỐ VÀ KHIẾU NẠI

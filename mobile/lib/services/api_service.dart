@@ -10,16 +10,17 @@ class ApiService {
       );
   static const String _configuredBaseUrl = '';
 
-  static String get baseUrl {
-    if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
-    if (kIsWeb) return 'http://localhost:5274';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-  return 'http://10.21.239.201:5274';
-}
-    return 'http://localhost:5274';
+static String get baseUrl {
+  if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
+  if (kIsWeb) return 'http://localhost:5000';
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:5000';
   }
+  return 'http://localhost:5000';
+}
 
   static String? currentUserId;
+  static String? currentToken;
 
             static Future<void> changePassword({
         required String currentPassword,
@@ -143,24 +144,36 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
-  }) async {
-    final response = await http
-        .post(
-          Uri.parse('$baseUrl/api/v1/auth/login'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': email.trim(), 'password': password}),
-        )
-        .timeout(const Duration(seconds: 10));
+  required String email,
+  required String password,
+}) async {
+  final response = await http
+      .post(
+        Uri.parse('$baseUrl/api/v1/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim(),
+          'password': password,
+        }),
+      )
+      .timeout(const Duration(seconds: 10));
 
-    final data = _decodeResponse(response);
-    if (_ok(response)) {
-      currentUserId = data['id']?.toString();
-      return data;
-    }
-    throw Exception(data['message'] ?? 'Đăng nhập không thành công.');
+  final data = _decodeResponse(response);
+
+  if (_ok(response)) {
+    currentUserId = data['id']?.toString();
+    currentToken = data['token']?.toString();
+
+    debugPrint('LOGIN userId: $currentUserId');
+    debugPrint(
+      'LOGIN có token: ${currentToken != null && currentToken!.isNotEmpty}',
+    );
+
+    return data;
   }
+
+  throw Exception(data['message'] ?? 'Đăng nhập không thành công.');
+}
 
   static Future<Map<String, dynamic>> createQuote({
     required Map<String, dynamic> order,
@@ -196,20 +209,36 @@ class ApiService {
   }
 
   static Future<List<Map<String, dynamic>>> listOrders() async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/api/v1/shipments'), headers: _headers())
-        .timeout(const Duration(seconds: 10));
+  final response = await http
+      .get(
+        Uri.parse('$baseUrl/api/v1/shipments'),
+        headers: _headers(),
+      )
+      .timeout(const Duration(seconds: 10));
 
-    final data = _decodeResponse(response);
-    if (_ok(response)) {
-      final list = data['data'];
-      if (list is List) {
-        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-      return [];
+  final data = _decodeResponse(response);
+
+  debugPrint('ORDERS API status: ${response.statusCode}');
+  debugPrint('ORDERS API response: ${response.body}');
+  debugPrint('ORDERS API userId: $currentUserId');
+
+  if (_ok(response)) {
+    final list = data['data'];
+
+    if (list is List) {
+      return list
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
     }
-    throw Exception(data['message'] ?? 'Không tải được đơn hàng.');
+
+    debugPrint('ORDERS API: trường data không phải List');
+    return [];
   }
+
+  throw Exception(
+    data['message'] ?? 'Không tải được đơn hàng.',
+  );
+}
 
   static Future<Map<String, dynamic>> getOrder(String shipmentId) async {
     final response = await http
@@ -270,15 +299,115 @@ class ApiService {
     if (_ok(response)) return data;
     throw Exception(data['message'] ?? 'Không gửi được báo cáo sự cố.');
   }
+  
+  // Lấy đánh giá hiện tại của đơn hàng
+  static Future<Map<String, dynamic>?> getRating(
+    String shipmentId,
+  ) async {
+    final response = await http
+        .get(
+          Uri.parse(
+            '$baseUrl/api/v1/customer/shipments/${Uri.encodeComponent(shipmentId)}/rating',
+          ),
+          headers: _headers(),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = _decodeResponse(response);
+
+    if (_ok(response)) {
+      // API có thể trả dữ liệu trong trường data hoặc trực tiếp.
+      final rating = data['data'] ?? data;
+
+      if (rating is Map<String, dynamic> && rating.isNotEmpty) {
+        return rating;
+      }
+
+      return null;
+    }
+
+    // Chỉ xem 404 là chưa có đánh giá nếu Backend quy định như vậy.
+    if (response.statusCode == 404) {
+      return null;
+    }
+
+    throw Exception(
+      data['message'] ?? 'Không tải được đánh giá dịch vụ.',
+    );
+  }
+
+  // Tạo đánh giá mới
+  static Future<Map<String, dynamic>> createRating({
+    required String shipmentId,
+    required int rating,
+    required String comment,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse(
+            '$baseUrl/api/v1/customer/shipments/${Uri.encodeComponent(shipmentId)}/rating',
+          ),
+          headers: _headers(),
+          body: jsonEncode({
+  'score': rating,
+  'comment': comment.trim(),
+})
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = _decodeResponse(response);
+
+    if (_ok(response)) return data;
+
+    throw Exception(data['message'] ?? 'Không gửi được đánh giá.');
+  }
+
+  // Cập nhật đánh giá đã tồn tại
+  static Future<Map<String, dynamic>> updateRating({
+    required String shipmentId,
+    required int rating,
+    required String comment,
+  }) async {
+    final response = await http
+        .put(
+          Uri.parse(
+            '$baseUrl/api/v1/customer/shipments/${Uri.encodeComponent(shipmentId)}/rating',
+          ),
+          headers: _headers(),
+          body: jsonEncode({
+  'score': rating,
+  'comment': comment.trim(),
+}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = _decodeResponse(response);
+
+    if (_ok(response)) return data;
+
+    throw Exception(data['message'] ?? 'Không cập nhật được đánh giá.');
+  }
+
 
   static Map<String, String> _headers() {
   final headers = <String, String>{
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
+
+  final token = currentToken;
+
+  debugPrint('API có token: ${token != null && token.isNotEmpty}');
 
   if (currentUserId != null) {
     headers['X-User-Id'] = currentUserId!;
   }
+
+  if (token != null && token.isNotEmpty) {
+    headers['Authorization'] = 'Bearer $token';
+  }
+
+  debugPrint('API có Authorization: ${headers.containsKey('Authorization')}');
 
   return headers;
 }
@@ -298,6 +427,7 @@ class ApiService {
   }
 
   static void logout() {
-    currentUserId = null;
-  }
+  currentUserId = null;
+  currentToken = null;
+}
 }
