@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:latlong2/latlong.dart';
+import '../widgets/map_location_picker.dart';
 import '../services/api_service.dart';
 
 class CreateOrderPage extends StatefulWidget {
   const CreateOrderPage({super.key});
 
   @override
-  State<CreateOrderPage> createState() =>
-      _CreateOrderPageState();
+  State<CreateOrderPage> createState() => _CreateOrderPageState();
 }
 
-class _CreateOrderPageState
-    extends State<CreateOrderPage> {
+class _CreateOrderPageState extends State<CreateOrderPage> {
   // =========================================================
   // FORM / CONTROLLERS
   // =========================================================
@@ -48,6 +47,8 @@ class _CreateOrderPageState
 
   Map<String, dynamic>? _quote;
 
+  LatLng? _pickupLocation;
+  LatLng? _deliveryLocation;
   // =========================================================
   // COLORS
   // =========================================================
@@ -62,14 +63,9 @@ class _CreateOrderPageState
   // VALIDATION
   // =========================================================
 
-  static final RegExp _phoneRegex =
-      RegExp(r'^\+?[0-9 ()-]{8,20}$');
+  static final RegExp _phoneRegex = RegExp(r'^\+?[0-9 ()-]{8,20}$');
 
-  String? _required(
-    String? value,
-    String label, {
-    int max = 300,
-  }) {
+  String? _required(String? value, String label, {int max = 300}) {
     final v = value?.trim() ?? '';
 
     if (v.isEmpty) {
@@ -83,33 +79,21 @@ class _CreateOrderPageState
     return null;
   }
 
-  String? _phone(
-    String? value,
-    String label,
-  ) {
-    final required = _required(
-      value,
-      label,
-      max: 20,
-    );
+  String? _phone(String? value, String label) {
+    final required = _required(value, label, max: 20);
 
     if (required != null) {
       return required;
     }
 
-    if (!_phoneRegex.hasMatch(
-      value!.trim(),
-    )) {
+    if (!_phoneRegex.hasMatch(value!.trim())) {
       return '$label không hợp lệ.';
     }
 
     return null;
   }
 
-  String? _positiveDecimal(
-    String? value,
-    String label,
-  ) {
+  String? _positiveDecimal(String? value, String label) {
     final raw = value?.trim() ?? '';
 
     if (raw.isEmpty) {
@@ -129,10 +113,7 @@ class _CreateOrderPageState
     return null;
   }
 
-  String? _nonNegativeInt(
-    String? value,
-    String label,
-  ) {
+  String? _nonNegativeInt(String? value, String label) {
     final raw = value?.trim() ?? '';
 
     if (raw.isEmpty) {
@@ -200,41 +181,29 @@ class _CreateOrderPageState
       'senderPhone': _senderPhone.text.trim(),
 
       'pickupAddress': _pickup.text.trim(),
+      'pickupLatitude': _pickupLocation?.latitude,
+      'pickupLongitude': _pickupLocation?.longitude,
 
-      'recipientName':
-          _recipientName.text.trim(),
-      'recipientPhone':
-          _recipientPhone.text.trim(),
+      'recipientName': _recipientName.text.trim(),
+      'recipientPhone': _recipientPhone.text.trim(),
 
-      'deliveryAddress':
-          _delivery.text.trim(),
+      'deliveryAddress': _delivery.text.trim(),
+      'deliveryLatitude': _deliveryLocation?.latitude,
+      'deliveryLongitude': _deliveryLocation?.longitude,
 
       'goods': _goods.text.trim(),
 
-      'weightKg':
-          double.parse(_weight.text.trim()),
+      'weightKg': double.parse(_weight.text.trim()),
+      'lengthCm': double.parse(_length.text.trim()),
+      'widthCm': double.parse(_width.text.trim()),
+      'heightCm': double.parse(_height.text.trim()),
 
-      'lengthCm':
-          double.parse(_length.text.trim()),
-
-      'widthCm':
-          double.parse(_width.text.trim()),
-
-      'heightCm':
-          double.parse(_height.text.trim()),
-
-      'declaredValue':
-          int.parse(_declared.text.trim()),
-
-      'codAmount':
-          int.parse(_cod.text.trim()),
+      'declaredValue': int.parse(_declared.text.trim()),
+      'codAmount': int.parse(_cod.text.trim()),
 
       'vehicleType': _vehicleType,
-
       'service': _service,
-
       'feePayer': _feePayer,
-
       'notes': _notes.text.trim(),
     };
   }
@@ -242,19 +211,18 @@ class _CreateOrderPageState
   Future<void> _quoteOrder() async {
     FocusScope.of(context).unfocus();
 
+    if (_pickupLocation == null || _deliveryLocation == null) {
+      _show('Vui lòng chọn vị trí lấy hàng và giao hàng trên bản đồ.', true);
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
-      _show(
-        'Vui lòng kiểm tra các trường đang báo lỗi.',
-        true,
-      );
+      _show('Vui lòng kiểm tra các trường đang báo lỗi.', true);
       return;
     }
 
     if (_notes.text.trim().length > 1000) {
-      _show(
-        'Ghi chú không được vượt quá 1.000 ký tự.',
-        true,
-      );
+      _show('Ghi chú không được vượt quá 1.000 ký tự.', true);
       return;
     }
 
@@ -263,10 +231,7 @@ class _CreateOrderPageState
     });
 
     try {
-      final quote =
-          await ApiService.createQuote(
-        order: _order(),
-      );
+      final quote = await ApiService.createQuote(order: _order());
 
       if (!mounted) return;
 
@@ -274,20 +239,11 @@ class _CreateOrderPageState
         _quote = quote;
       });
 
-      _show(
-        'Đã tính phí vận chuyển.',
-        false,
-      );
+      _show('Đã tính phí vận chuyển.', false);
     } catch (e) {
       if (!mounted) return;
 
-      _show(
-        e.toString().replaceFirst(
-          'Exception: ',
-          '',
-        ),
-        true,
-      );
+      _show(e.toString().replaceFirst('Exception: ', ''), true);
     } finally {
       if (mounted) {
         setState(() {
@@ -316,33 +272,20 @@ class _CreateOrderPageState
     });
 
     try {
-      final order =
-          await ApiService.createOrder(
+      final order = await ApiService.createOrder(
         order: _order(),
         quoteId: _quote!['id'].toString(),
       );
 
       if (!mounted) return;
 
-      _show(
-        'Đã tạo đơn ${order['id']}.',
-        false,
-      );
+      _show('Đã tạo đơn ${order['id']}.', false);
 
-      Navigator.pop(
-        context,
-        order,
-      );
+      Navigator.pop(context, order);
     } catch (e) {
       if (!mounted) return;
 
-      _show(
-        e.toString().replaceFirst(
-          'Exception: ',
-          '',
-        ),
-        true,
-      );
+      _show(e.toString().replaceFirst('Exception: ', ''), true);
     } finally {
       if (mounted) {
         setState(() {
@@ -352,17 +295,11 @@ class _CreateOrderPageState
     }
   }
 
-  void _show(
-    String text,
-    bool error,
-  ) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
+  void _show(String text, bool error) {
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text),
-        backgroundColor: error
-            ? Colors.red.shade700
-            : Colors.green.shade700,
+        backgroundColor: error ? Colors.red.shade700 : Colors.green.shade700,
       ),
     );
   }
@@ -383,8 +320,7 @@ class _CreateOrderPageState
     IconData? icon,
   }) {
     return Padding(
-      padding:
-          const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
@@ -392,12 +328,8 @@ class _CreateOrderPageState
         maxLength: maxLength,
         maxLines: maxLines,
 
-        validator: validator ??
-            (value) => _required(
-                  value,
-                  label,
-                  max: maxLength,
-                ),
+        validator:
+            validator ?? (value) => _required(value, label, max: maxLength),
 
         onChanged: (_) {
           _invalidateQuote();
@@ -407,10 +339,7 @@ class _CreateOrderPageState
           label,
           hint: hint,
           icon: icon,
-        ).copyWith(
-          counterText:
-              maxLength <= 30 ? '' : null,
-        ),
+        ).copyWith(counterText: maxLength <= 30 ? '' : null),
       ),
     );
   }
@@ -425,8 +354,7 @@ class _CreateOrderPageState
       backgroundColor: background,
 
       appBar: AppBar(
-        title:
-            const Text('Tạo đơn giao hàng'),
+        title: const Text('Tạo đơn giao hàng'),
         backgroundColor: forest,
         foregroundColor: Colors.white,
       ),
@@ -435,14 +363,14 @@ class _CreateOrderPageState
         key: _formKey,
 
         child: ListView(
-          padding:
-              const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
 
           children: [
+            const SizedBox(height: 20),
+
             // ===============================================
             // INTRO
             // ===============================================
-
             _introCard(),
 
             const SizedBox(height: 22),
@@ -450,12 +378,7 @@ class _CreateOrderPageState
             // ===============================================
             // NGƯỜI GỬI
             // ===============================================
-
-            _SectionTitle(
-              icon:
-                  Icons.person_outline,
-              title: 'Người gửi',
-            ),
+            _SectionTitle(icon: Icons.person_outline, title: 'Người gửi'),
 
             const SizedBox(height: 12),
 
@@ -464,34 +387,36 @@ class _CreateOrderPageState
                 _field(
                   'Tên người gửi',
                   _senderName,
-                  icon:
-                      Icons.person_outline,
+                  icon: Icons.person_outline,
                 ),
 
                 _field(
                   'Điện thoại người gửi',
                   _senderPhone,
-                  keyboardType:
-                      TextInputType.phone,
+                  keyboardType: TextInputType.phone,
                   maxLength: 20,
-                  icon:
-                      Icons.phone_outlined,
+                  icon: Icons.phone_outlined,
                   validator: (value) =>
-                      _phone(
-                    value,
-                    'Số điện thoại người gửi',
-                  ),
+                      _phone(value, 'Số điện thoại người gửi'),
                 ),
 
                 _field(
                   'Địa chỉ lấy hàng',
                   _pickup,
-                  icon:
-                      Icons.location_on_outlined,
-                  hint:
-                      'Nhập địa chỉ lấy hàng',
+                  icon: Icons.location_on_outlined,
+                  hint: 'Nhập địa chỉ lấy hàng',
                 ),
               ],
+            ),
+
+            MapLocationPicker(
+              title: 'Chọn vị trí lấy hàng',
+              value: _pickupLocation,
+              onChanged: (location) {
+                setState(() {
+                  _pickupLocation = location;
+                });
+              },
             ),
 
             const SizedBox(height: 20),
@@ -499,12 +424,7 @@ class _CreateOrderPageState
             // ===============================================
             // NGƯỜI NHẬN
             // ===============================================
-
-            _SectionTitle(
-              icon:
-                  Icons.person_pin_outlined,
-              title: 'Người nhận',
-            ),
+            _SectionTitle(icon: Icons.person_pin_outlined, title: 'Người nhận'),
 
             const SizedBox(height: 12),
 
@@ -513,34 +433,37 @@ class _CreateOrderPageState
                 _field(
                   'Tên người nhận',
                   _recipientName,
-                  icon:
-                      Icons.person_outline,
+                  icon: Icons.person_outline,
                 ),
 
                 _field(
                   'Điện thoại người nhận',
                   _recipientPhone,
-                  keyboardType:
-                      TextInputType.phone,
+                  keyboardType: TextInputType.phone,
                   maxLength: 20,
-                  icon:
-                      Icons.phone_outlined,
+                  icon: Icons.phone_outlined,
                   validator: (value) =>
-                      _phone(
-                    value,
-                    'Số điện thoại người nhận',
-                  ),
+                      _phone(value, 'Số điện thoại người nhận'),
                 ),
 
                 _field(
                   'Địa chỉ giao hàng',
                   _delivery,
-                  icon:
-                      Icons.flag_outlined,
-                  hint:
-                      'Nhập địa chỉ giao hàng',
+                  icon: Icons.flag_outlined,
+                  hint: 'Nhập địa chỉ giao hàng',
                 ),
               ],
+            ),
+
+            MapLocationPicker(
+              title: 'Chọn vị trí giao hàng',
+              value: _deliveryLocation,
+              markerColor: Colors.green,
+              onChanged: (location) {
+                setState(() {
+                  _deliveryLocation = location;
+                });
+              },
             ),
 
             const SizedBox(height: 20),
@@ -548,12 +471,9 @@ class _CreateOrderPageState
             // ===============================================
             // KIỆN HÀNG
             // ===============================================
-
             _SectionTitle(
-              icon:
-                  Icons.inventory_2_outlined,
-              title:
-                  'Thông tin kiện hàng',
+              icon: Icons.inventory_2_outlined,
+              title: 'Thông tin kiện hàng',
             ),
 
             const SizedBox(height: 12),
@@ -563,60 +483,41 @@ class _CreateOrderPageState
                 _field(
                   'Nội dung hàng hóa',
                   _goods,
-                  icon:
-                      Icons.category_outlined,
-                  hint:
-                      'Ví dụ: Quần áo, tài liệu...',
+                  icon: Icons.category_outlined,
+                  hint: 'Ví dụ: Quần áo, tài liệu...',
                 ),
 
                 _field(
                   'Khối lượng (kg)',
                   _weight,
-                  keyboardType:
-                      const TextInputType
-                          .numberWithOptions(
+                  keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   maxLength: 10,
-                  icon:
-                      Icons.scale_outlined,
-                  validator: (value) =>
-                      _positiveDecimal(
-                    value,
-                    'Khối lượng',
-                  ),
+                  icon: Icons.scale_outlined,
+                  validator: (value) => _positiveDecimal(value, 'Khối lượng'),
                 ),
 
                 const Text(
                   'Kích thước kiện hàng (cm)',
-                  style: TextStyle(
-                    color: forest,
-                    fontWeight:
-                        FontWeight.w600,
-                  ),
+                  style: TextStyle(color: forest, fontWeight: FontWeight.w600),
                 ),
 
                 const SizedBox(height: 10),
 
                 Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: _field(
                         'Dài',
                         _length,
-                        keyboardType:
-                            const TextInputType
-                                .numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         maxLength: 10,
                         validator: (value) =>
-                            _positiveDecimal(
-                          value,
-                          'Chiều dài',
-                        ),
+                            _positiveDecimal(value, 'Chiều dài'),
                       ),
                     ),
 
@@ -626,17 +527,12 @@ class _CreateOrderPageState
                       child: _field(
                         'Rộng',
                         _width,
-                        keyboardType:
-                            const TextInputType
-                                .numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         maxLength: 10,
                         validator: (value) =>
-                            _positiveDecimal(
-                          value,
-                          'Chiều rộng',
-                        ),
+                            _positiveDecimal(value, 'Chiều rộng'),
                       ),
                     ),
 
@@ -646,17 +542,12 @@ class _CreateOrderPageState
                       child: _field(
                         'Cao',
                         _height,
-                        keyboardType:
-                            const TextInputType
-                                .numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         maxLength: 10,
                         validator: (value) =>
-                            _positiveDecimal(
-                          value,
-                          'Chiều cao',
-                        ),
+                            _positiveDecimal(value, 'Chiều cao'),
                       ),
                     ),
                   ],
@@ -665,39 +556,21 @@ class _CreateOrderPageState
                 _field(
                   'Giá trị hàng (đ)',
                   _declared,
-                  keyboardType:
-                      TextInputType.number,
-                  formatters: [
-                    FilteringTextInputFormatter
-                        .digitsOnly,
-                  ],
+                  keyboardType: TextInputType.number,
+                  formatters: [FilteringTextInputFormatter.digitsOnly],
                   maxLength: 12,
-                  icon:
-                      Icons.sell_outlined,
-                  validator: (value) =>
-                      _nonNegativeInt(
-                    value,
-                    'Giá trị hàng',
-                  ),
+                  icon: Icons.sell_outlined,
+                  validator: (value) => _nonNegativeInt(value, 'Giá trị hàng'),
                 ),
 
                 _field(
                   'Tiền thu hộ COD (đ)',
                   _cod,
-                  keyboardType:
-                      TextInputType.number,
-                  formatters: [
-                    FilteringTextInputFormatter
-                        .digitsOnly,
-                  ],
+                  keyboardType: TextInputType.number,
+                  formatters: [FilteringTextInputFormatter.digitsOnly],
                   maxLength: 12,
-                  icon:
-                      Icons.payments_outlined,
-                  validator: (value) =>
-                      _nonNegativeInt(
-                    value,
-                    'Tiền COD',
-                  ),
+                  icon: Icons.payments_outlined,
+                  validator: (value) => _nonNegativeInt(value, 'Tiền COD'),
                 ),
               ],
             ),
@@ -707,12 +580,9 @@ class _CreateOrderPageState
             // ===============================================
             // DỊCH VỤ
             // ===============================================
-
             _SectionTitle(
-              icon:
-                  Icons.local_shipping_outlined,
-              title:
-                  'Dịch vụ vận chuyển',
+              icon: Icons.local_shipping_outlined,
+              title: 'Dịch vụ vận chuyển',
             ),
 
             const SizedBox(height: 12),
@@ -726,14 +596,8 @@ class _CreateOrderPageState
                     icon: Icons.directions_bike_outlined,
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'motorbike',
-                      child: Text('Xe máy'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'car',
-                      child: Text('Ô tô'),
-                    ),
+                    DropdownMenuItem(value: 'motorbike', child: Text('Xe máy')),
+                    DropdownMenuItem(value: 'car', child: Text('Ô tô')),
                   ],
                   onChanged: _loading
                       ? null
@@ -754,10 +618,7 @@ class _CreateOrderPageState
 
                 const Text(
                   'Chọn dịch vụ',
-                  style: TextStyle(
-                    color: forest,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: forest, fontWeight: FontWeight.w600),
                 ),
 
                 const SizedBox(height: 10),
@@ -767,53 +628,37 @@ class _CreateOrderPageState
                 const SizedBox(height: 18),
 
                 DropdownButtonFormField<String>(
-                  initialValue:
-                      _feePayer,
+                  initialValue: _feePayer,
 
                   decoration: _input(
                     'Thanh toán phí vận chuyển',
-                    icon:
-                        Icons.wallet_outlined,
+                    icon: Icons.wallet_outlined,
                   ),
 
                   items: const [
                     DropdownMenuItem(
-                      value:
-                          'shop_prepaid',
-                      child:
-                          Text(
-                        'Shop trả trước',
-                      ),
+                      value: 'shop_prepaid',
+                      child: Text('Shop trả trước'),
                     ),
                     DropdownMenuItem(
-                      value:
-                          'recipient',
-                      child:
-                          Text(
-                        'Người nhận trả',
-                      ),
+                      value: 'recipient',
+                      child: Text('Người nhận trả'),
                     ),
                     DropdownMenuItem(
-                      value:
-                          'deduct_cod',
-                      child:
-                          Text(
-                        'Khấu trừ COD',
-                      ),
+                      value: 'deduct_cod',
+                      child: Text('Khấu trừ COD'),
                     ),
                   ],
 
                   onChanged: _loading
                       ? null
                       : (value) {
-                          if (value ==
-                              null) {
+                          if (value == null) {
                             return;
                           }
 
                           setState(() {
-                            _feePayer =
-                                value;
+                            _feePayer = value;
                           });
 
                           _invalidateQuote();
@@ -833,8 +678,7 @@ class _CreateOrderPageState
 
                   decoration: _input(
                     'Ghi chú giao hàng (không bắt buộc)',
-                    icon:
-                        Icons.notes_outlined,
+                    icon: Icons.notes_outlined,
                   ),
                 ),
               ],
@@ -843,60 +687,38 @@ class _CreateOrderPageState
             // ===============================================
             // QUOTE
             // ===============================================
-
-            if (_quote != null) ...[
-              const SizedBox(height: 20),
-
-              _quoteCard(),
-            ],
+            if (_quote != null) ...[const SizedBox(height: 20), _quoteCard()],
 
             const SizedBox(height: 20),
 
             // ===============================================
             // CALCULATE
             // ===============================================
-
             SizedBox(
               height: 54,
 
               child: FilledButton.icon(
-                style:
-                    FilledButton.styleFrom(
+                style: FilledButton.styleFrom(
                   backgroundColor: forest,
-                  foregroundColor:
-                      Colors.white,
+                  foregroundColor: Colors.white,
                 ),
 
-                onPressed:
-                    _loading
-                        ? null
-                        : _quoteOrder,
+                onPressed: _loading ? null : _quoteOrder,
 
                 icon: _loading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color:
-                              Colors.white,
+                          color: Colors.white,
                         ),
                       )
-                    : const Icon(
-                        Icons
-                            .calculate_outlined,
-                      ),
+                    : const Icon(Icons.calculate_outlined),
 
                 label: Text(
-                  _loading
-                      ? 'Đang xử lý...'
-                      : 'Tính phí vận chuyển',
-                  style:
-                      const TextStyle(
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
+                  _loading ? 'Đang xử lý...' : 'Tính phí vận chuyển',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -914,41 +736,34 @@ class _CreateOrderPageState
 
   Widget _introCard() {
     return Container(
-      padding:
-          const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(18),
 
       decoration: BoxDecoration(
         color: forest,
-        borderRadius:
-            BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18),
       ),
 
       child: const Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             backgroundColor: lime,
             foregroundColor: forest,
-            child: Icon(
-              Icons.local_shipping_outlined,
-            ),
+            child: Icon(Icons.local_shipping_outlined),
           ),
 
           SizedBox(width: 14),
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Tạo đơn mới',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
 
@@ -957,10 +772,7 @@ class _CreateOrderPageState
                 Text(
                   'Nhập thông tin giao hàng, '
                   'tính phí và xác nhận tạo đơn.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(color: Colors.white70, height: 1.4),
                 ),
               ],
             ),
@@ -1018,12 +830,10 @@ class _CreateOrderPageState
     required String subtitle,
     required IconData icon,
   }) {
-    final selected =
-        _service == value;
+    final selected = _service == value;
 
     return InkWell(
-      borderRadius:
-          BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(14),
 
       onTap: _loading
           ? null
@@ -1036,45 +846,25 @@ class _CreateOrderPageState
             },
 
       child: AnimatedContainer(
-        duration:
-            const Duration(
-          milliseconds: 160,
-        ),
+        duration: const Duration(milliseconds: 160),
 
-        padding:
-            const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(14),
 
         decoration: BoxDecoration(
-          color: selected
-              ? lime
-              : const Color(
-                  0xFFF7F8F4,
-                ),
+          color: selected ? lime : const Color(0xFFF7F8F4),
 
-          borderRadius:
-              BorderRadius.circular(
-            14,
-          ),
+          borderRadius: BorderRadius.circular(14),
 
           border: Border.all(
-            color: selected
-                ? forest
-                : const Color(
-                    0xFFE2E8E4,
-                  ),
-            width:
-                selected ? 1.5 : 1,
+            color: selected ? forest : const Color(0xFFE2E8E4),
+            width: selected ? 1.5 : 1,
           ),
         ),
 
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: forest,
-            ),
+            Icon(icon, color: forest),
 
             const SizedBox(height: 10),
 
@@ -1082,20 +872,13 @@ class _CreateOrderPageState
               title,
               style: const TextStyle(
                 color: forest,
-                fontWeight:
-                    FontWeight.bold,
+                fontWeight: FontWeight.bold,
               ),
             ),
 
             const SizedBox(height: 2),
 
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: muted,
-                fontSize: 11,
-              ),
-            ),
+            Text(subtitle, style: const TextStyle(color: muted, fontSize: 11)),
           ],
         ),
       ),
@@ -1110,31 +893,22 @@ class _CreateOrderPageState
     return Container(
       width: double.infinity,
 
-      padding:
-          const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(18),
 
       decoration: BoxDecoration(
         color: Colors.white,
 
-        borderRadius:
-            BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18),
 
-        border: Border.all(
-          color: forest,
-        ),
+        border: Border.all(color: forest),
       ),
 
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(
-                Icons
-                    .request_quote_outlined,
-                color: forest,
-              ),
+              Icon(Icons.request_quote_outlined, color: forest),
 
               SizedBox(width: 8),
 
@@ -1143,8 +917,7 @@ class _CreateOrderPageState
                 style: TextStyle(
                   color: forest,
                   fontSize: 18,
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -1152,12 +925,7 @@ class _CreateOrderPageState
 
           const SizedBox(height: 14),
 
-          const Text(
-            'Phí dự kiến',
-            style: TextStyle(
-              color: muted,
-            ),
-          ),
+          const Text('Phí dự kiến', style: TextStyle(color: muted)),
 
           const SizedBox(height: 4),
 
@@ -1166,21 +934,16 @@ class _CreateOrderPageState
             style: const TextStyle(
               color: orange,
               fontSize: 28,
-              fontWeight:
-                  FontWeight.w800,
+              fontWeight: FontWeight.w800,
             ),
           ),
 
-          if (_quote!['expiresAt'] !=
-              null) ...[
+          if (_quote!['expiresAt'] != null) ...[
             const SizedBox(height: 6),
 
             Text(
               'Hết hạn: ${_formatDate(_quote!['expiresAt'])}',
-              style: const TextStyle(
-                color: muted,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: muted, fontSize: 12),
             ),
           ],
 
@@ -1190,34 +953,19 @@ class _CreateOrderPageState
             width: double.infinity,
 
             child: FilledButton.icon(
-              style:
-                  FilledButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: orange,
-                foregroundColor:
-                    Colors.white,
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  vertical: 13,
-                ),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
               ),
 
-              onPressed:
-                  _loading
-                      ? null
-                      : _create,
+              onPressed: _loading ? null : _create,
 
-              icon: const Icon(
-                Icons
-                    .check_circle_outline,
-              ),
+              icon: const Icon(Icons.check_circle_outline),
 
               label: const Text(
                 'Xác nhận tạo đơn',
-                style: TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -1230,98 +978,56 @@ class _CreateOrderPageState
   // COMMON
   // =========================================================
 
-  Widget _sectionCard({
-    required List<Widget> children,
-  }) {
+  Widget _sectionCard({required List<Widget> children}) {
     return Container(
       width: double.infinity,
 
-      padding:
-          const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
 
       decoration: BoxDecoration(
         color: Colors.white,
 
-        borderRadius:
-            BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18),
 
-        border: Border.all(
-          color:
-              const Color(
-            0xFFE2E8E4,
-          ),
-        ),
+        border: Border.all(color: const Color(0xFFE2E8E4)),
       ),
 
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  InputDecoration _input(
-    String label, {
-    String? hint,
-    IconData? icon,
-  }) {
+  InputDecoration _input(String label, {String? hint, IconData? icon}) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
 
-      prefixIcon:
-          icon == null
-              ? null
-              : Icon(icon),
+      prefixIcon: icon == null ? null : Icon(icon),
 
       filled: true,
-      fillColor:
-          const Color(0xFFFBFCFA),
+      fillColor: const Color(0xFFFBFCFA),
 
-      border: OutlineInputBorder(
-        borderRadius:
-            BorderRadius.circular(12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8E4)),
       ),
 
-      enabledBorder:
-          OutlineInputBorder(
-        borderRadius:
-            BorderRadius.circular(12),
-        borderSide:
-            const BorderSide(
-          color:
-              Color(
-            0xFFE2E8E4,
-          ),
-        ),
-      ),
-
-      focusedBorder:
-          OutlineInputBorder(
-        borderRadius:
-            BorderRadius.circular(12),
-        borderSide:
-            const BorderSide(
-          color: forest,
-          width: 1.5,
-        ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: forest, width: 1.5),
       ),
     );
   }
 
-  String _formatDate(
-    dynamic value,
-  ) {
-    final date =
-        DateTime.tryParse(
-          value.toString(),
-        )?.toLocal();
+  String _formatDate(dynamic value) {
+    final date = DateTime.tryParse(value.toString())?.toLocal();
 
     if (date == null) {
       return value.toString();
     }
 
-    String two(int n) =>
-        n.toString().padLeft(2, '0');
+    String two(int n) => n.toString().padLeft(2, '0');
 
     return '${two(date.day)}/${two(date.month)}/${date.year} '
         '${two(date.hour)}:${two(date.minute)}';
@@ -1332,20 +1038,14 @@ class _CreateOrderPageState
 // SECTION TITLE
 // =========================================================
 
-class _SectionTitle
-    extends StatelessWidget {
+class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const _SectionTitle({
-    required this.icon,
-    required this.title,
-  });
+  const _SectionTitle({required this.icon, required this.title});
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
@@ -1353,24 +1053,11 @@ class _SectionTitle
           height: 38,
 
           decoration: BoxDecoration(
-            color:
-                const Color(
-              0xFFEAF6A6,
-            ),
-            borderRadius:
-                BorderRadius.circular(
-              10,
-            ),
+            color: const Color(0xFFEAF6A6),
+            borderRadius: BorderRadius.circular(10),
           ),
 
-          child: Icon(
-            icon,
-            size: 20,
-            color:
-                const Color(
-              0xFF123F31,
-            ),
-          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF123F31)),
         ),
 
         const SizedBox(width: 10),
@@ -1378,15 +1065,10 @@ class _SectionTitle
         Expanded(
           child: Text(
             title.toUpperCase(),
-            style:
-                const TextStyle(
-              fontWeight:
-                  FontWeight.bold,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
               letterSpacing: 1.1,
-              color:
-                  Color(
-                0xFF123F31,
-              ),
+              color: Color(0xFF123F31),
             ),
           ),
         ),

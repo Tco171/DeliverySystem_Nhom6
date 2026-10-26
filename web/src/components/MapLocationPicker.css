@@ -1,0 +1,5 @@
+.map-picker { display: grid; gap: 8px; min-width: 0; }
+.map-picker__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.map-picker__heading span, .map-picker__coordinates { color: #668177; font-size: 12px; }
+.map-picker__map { height: 260px; width: 100%; border: 1px solid #d9e2dc; border-radius: 12px; overflow: hidden; z-index: 0; }
+.map-picker__coordinates code { color: #123f31; }
