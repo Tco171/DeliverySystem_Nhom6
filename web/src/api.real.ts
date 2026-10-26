@@ -604,7 +604,7 @@ async changePassword(input: { currentPassword: string; newPassword: string }): P
 
 async getSession(): Promise<SessionUser | null> {
   const saved = localStorage.getItem("express-user");
-  if (!saved) return null;
+  if (!saved || !localStorage.getItem("express-token")) return null;
 
   try {
     return checkedSession(JSON.parse(saved) as SessionUser);
@@ -614,10 +614,15 @@ async getSession(): Promise<SessionUser | null> {
   }
 },
 async login(input: {email:string;password:string}): Promise<SessionUser> {
-  const user = checkedSession(await request<SessionUser>('/auth/login',{
-    method:'POST',
-    body:JSON.stringify({...input,email:input.email.trim()})
-  }));
+  localStorage.removeItem("express-token");
+  localStorage.removeItem("express-user");
+  const response = await request<SessionUser & { token: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({...input, email: input.email.trim()})
+  });
+  if (!response.token) throw new Error("Backend không trả JWT token.");
+  const user = checkedSession(response);
+  localStorage.setItem("express-token", response.token);
   localStorage.setItem("express-user", JSON.stringify(user));
   return user;
 },
@@ -626,7 +631,7 @@ async register(input: RegisterInput): Promise<RegisterResult> {
 },
 async logout(): Promise<void> {
   try { await request<unknown>('/auth/logout',{method:'POST'}); }
-  finally { localStorage.removeItem("express-user"); }
+  finally { localStorage.removeItem("express-user"); localStorage.removeItem("express-token"); }
 }
 
 };

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import 'complaint_page.dart';
+import 'vnpay_page.dart';
 
 class OrderDetailPage extends StatefulWidget {
   final String shipmentId;
@@ -16,6 +17,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _order;
+  String? _paymentStatus;
 
   static const Map<String, String> statuses = {
     'pending_pickup': 'Chờ lấy hàng',
@@ -49,11 +51,24 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
     try {
       final order = await ApiService.getOrder(widget.shipmentId);
+      String? paymentStatus;
+      if (order['feePayer']?.toString().trim().toLowerCase() == 'shop_prepaid' &&
+          ApiService.currentToken != null &&
+          (ApiService.currentRole ?? '').toLowerCase() == 'customer') {
+        try {
+          final statuses = await ApiService.getShipmentPaymentStatuses();
+          paymentStatus = statuses[widget.shipmentId] ?? 'unpaid';
+        } catch (_) {
+          // The shipment details remain available even if the status API fails.
+          paymentStatus = null;
+        }
+      }
 
       if (!mounted) return;
 
       setState(() {
         _order = order;
+        _paymentStatus = paymentStatus;
       });
     } catch (e) {
       if (!mounted) return;
@@ -296,11 +311,89 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
             _row('Người trả phí', _feePayerName(order['feePayer'])),
 
+            if (order['feePayer'] == 'shop_prepaid')
+              _row('Thanh toán VNPay', _paymentStatus == 'paid'
+                  ? 'Đã thanh toán'
+                  : _paymentStatus == 'pending' ? 'Đang chờ xác nhận'
+                  : _paymentStatus == 'failed' ? 'Thanh toán thất bại'
+                  : _paymentStatus == null ? 'Chưa xác minh được' : 'Chưa thanh toán'),
+
             _row('Số lần giao', order['attempts']?.toString() ?? '0'),
 
             if ((order['notes']?.toString() ?? '').trim().isNotEmpty)
               _row('Ghi chú', order['notes'].toString()),
           ]),
+
+          const SizedBox(height: 12),
+
+          // Payment is a customer action for prepaid shipments only.
+          // Keep the status sourced from the shared Backend, never guess paid.
+          if (order['feePayer']?.toString().trim().toLowerCase() == 'shop_prepaid' &&
+              ApiService.currentToken != null &&
+              (ApiService.currentRole ?? '').toLowerCase() == 'customer')
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'THANH TOÁN VNPAY',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: Color(0xFF123F31),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _paymentStatus == 'paid'
+                          ? 'Đã thanh toán'
+                          : _paymentStatus == 'pending'
+                              ? 'Đang chờ xác nhận thanh toán'
+                              : _paymentStatus == 'failed'
+                                  ? 'Thanh toán thất bại – có thể thử lại'
+                                  : _paymentStatus == null
+                                      ? 'Chưa xác minh được trạng thái thanh toán'
+                                      : 'Chưa thanh toán',
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton.icon(
+                        onPressed: _paymentStatus == 'paid'
+                            ? null
+                            : () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VnPayPage(
+                                      shipmentId: widget.shipmentId,
+                                    ),
+                                  ),
+                                );
+                                if (mounted) await _load();
+                              },
+                        icon: Icon(
+                          _paymentStatus == 'paid'
+                              ? Icons.check_circle
+                              : Icons.payment,
+                        ),
+                        label: Text(
+                          _paymentStatus == 'paid'
+                              ? 'Đã thanh toán VNPay'
+                              : _paymentStatus == 'pending'
+                                  ? 'Kiểm tra giao dịch VNPay'
+                                  : 'Thanh toán VNPay',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           const SizedBox(height: 8),
 

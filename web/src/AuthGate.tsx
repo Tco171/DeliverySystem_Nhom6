@@ -48,6 +48,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const expired = () => {
+      localStorage.removeItem("express-user");
+      localStorage.removeItem("express-token");
       setUser(null);
       setSessionError("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
       setAuthMode("login");
