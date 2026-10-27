@@ -18,13 +18,15 @@ class _StaffOrderDetailPageState extends State<StaffOrderDetailPage> {
     'picking_up': [['pickup-success', 'Lấy hàng thành công'], ['pickup-failed', 'Lấy hàng thất bại']],
     'picked_up': [['start-delivery', 'Bắt đầu giao hàng']],
     'delivering': [['delivery-success', 'Giao thành công'], ['delivery-failed', 'Giao thất bại']],
+    'return_pending': [['start-return', 'Bắt đầu hoàn hàng']],
     'returning': [['return-complete', 'Hoàn hàng thành công']],
   };
   static const _labels = <String, String>{
     'assigned': 'Đã phân công', 'accepted': 'Đã nhận đơn',
     'picking_up': 'Đang lấy hàng', 'picked_up': 'Đã lấy hàng',
     'delivering': 'Đang giao hàng', 'delivered': 'Đã giao hàng',
-    'returning': 'Đang hoàn hàng',
+    'return_pending': 'Chờ hoàn hàng', 'returning': 'Đang hoàn hàng',
+    'returned': 'Đã hoàn hàng',
   };
 
   String _field(String name) => (widget.order[name] ?? '').toString();
@@ -87,8 +89,11 @@ class _StaffOrderDetailPageState extends State<StaffOrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final status = _field('assignmentStatus').isNotEmpty
-        ? _field('assignmentStatus') : _field('shipmentStatus');
+    final shipmentStatus = _field('shipmentStatus').trim().toLowerCase();
+    final assignmentStatus = _field('assignmentStatus').trim().toLowerCase();
+    // Use shipment status for actions; fallback while shipment is pending_pickup.
+    final status = _actions.containsKey(shipmentStatus) || _labels.containsKey(shipmentStatus)
+        ? shipmentStatus : assignmentStatus;
     final available = _actions[status] ?? const <List<String>>[];
     return Scaffold(
       appBar: AppBar(title: const Text('Chi tiết đơn'),

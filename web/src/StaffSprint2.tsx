@@ -10,12 +10,13 @@ const actions: Record<string, StaffButton[]> = {
   picking_up: [{ action: "pickup-success", label: "Lấy hàng thành công" }, { action: "pickup-failed", label: "Lấy hàng thất bại", reason: true }],
   picked_up: [{ action: "start-delivery", label: "Bắt đầu giao" }],
   delivering: [{ action: "delivery-success", label: "Giao thành công" }, { action: "delivery-failed", label: "Giao thất bại", reason: true }],
+  return_pending: [{ action: "start-return", label: "Bắt đầu hoàn hàng" }],
   returning: [{ action: "return-complete", label: "Hoàn hàng thành công" }],
 };
 const statusNames: Record<string, string> = {
   assigned: "Đã phân công", accepted: "Đã nhận đơn", picking_up: "Đang lấy hàng",
   picked_up: "Đã lấy hàng", delivering: "Đang giao hàng", delivered: "Đã giao hàng",
-  returning: "Đang hoàn hàng", returned: "Đã hoàn hàng", rejected: "Đã từ chối",
+  return_pending: "Chờ hoàn hàng", returning: "Đang hoàn hàng", returned: "Đã hoàn hàng", rejected: "Đã từ chối",
   pickup_failed: "Lấy hàng thất bại", delivery_failed: "Giao hàng thất bại",
 };
 const displayStatus = (value?: string) => statusNames[(value ?? "").toLowerCase()] ?? value ?? "Chưa cập nhật";
@@ -92,8 +93,13 @@ export default function StaffSprint2() {
     {!loading && filtered.length === 0 && <div className="empty"><h3>Không có đơn hàng phù hợp</h3><p>{search ? "Hãy thử từ khóa khác." : "Hiện bạn chưa được phân công đơn hàng nào."}</p></div>}
     <div className="staff-task-list">
       {!loading && filtered.map(o => {
-        const status = (o.assignmentStatus || o.shipmentStatus || "").toLowerCase();
-        const available = actions[status] ?? actions[(o.shipmentStatus ?? "").toLowerCase()] ?? [];
+        // Shipment is authoritative once it reaches a recognized shipment state.
+        // At pending_pickup, use assignment status for accept/start-pickup.
+        const shipmentStatus = (o.shipmentStatus ?? "").trim().toLowerCase();
+        const assignmentStatus = (o.assignmentStatus ?? "").trim().toLowerCase();
+        const status = shipmentStatus && (shipmentStatus in actions || shipmentStatus in statusNames)
+          ? shipmentStatus : assignmentStatus;
+        const available = actions[status] ?? [];
         const expanded = selected === o.assignmentId;
         return <article className="staff-task-card staff-s2-card" key={o.assignmentId}>
           <div className="staff-task-heading"><strong className="tracking-code">{o.shipmentId}</strong><span className={`staff-s2-badge staff-s2-${status.replace(/[^a-z_-]/g, "")}`}>{displayStatus(status)}</span></div>

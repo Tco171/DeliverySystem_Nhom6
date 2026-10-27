@@ -16,7 +16,8 @@ class _StaffOrdersPageState extends State<StaffOrdersPage> {
     'assigned': 'Đã phân công', 'accepted': 'Đã nhận đơn',
     'picking_up': 'Đang lấy hàng', 'picked_up': 'Đã lấy hàng',
     'delivering': 'Đang giao hàng', 'delivered': 'Đã giao hàng',
-    'rejected': 'Đã từ chối', 'returning': 'Đang hoàn hàng',
+    'rejected': 'Đã từ chối', 'return_pending': 'Chờ hoàn hàng',
+    'returning': 'Đang hoàn hàng', 'returned': 'Đã hoàn hàng',
     'completed': 'Hoàn thành',
   };
 
@@ -90,9 +91,10 @@ class _StaffOrdersPageState extends State<StaffOrdersPage> {
               itemCount: orders.length,
               itemBuilder: (context, index) {
                 final order = orders[index];
-                final status = _value(order, 'assignmentStatus').isNotEmpty
-                    ? _value(order, 'assignmentStatus')
-                    : _value(order, 'shipmentStatus');
+                final shipmentStatus = _value(order, 'shipmentStatus').trim().toLowerCase();
+                final assignmentStatus = _value(order, 'assignmentStatus').trim().toLowerCase();
+                final status = _labels.containsKey(shipmentStatus)
+                    ? shipmentStatus : assignmentStatus;
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: InkWell(
