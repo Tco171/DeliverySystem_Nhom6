@@ -632,7 +632,7 @@ class _ShipmentListScreenState extends State<ShipmentListScreen> with SingleTick
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(item.status).withOpacity(0.12),
+                    color: _getStatusColor(item.status).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

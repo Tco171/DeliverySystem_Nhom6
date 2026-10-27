@@ -143,7 +143,10 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
               }
               Navigator.of(ctx).pop(true);
             },
-            child: const Text('XÁC NHẬN HỦY', fontWeight: FontWeight.bold),
+            child: const Text(
+              'XÁC NHẬN HỦY',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -327,7 +330,7 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(shipment.status).withOpacity(0.12),
+                            color: _getStatusColor(shipment.status).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(

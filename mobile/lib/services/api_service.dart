@@ -20,6 +20,8 @@ class ApiService {
   }
 
   static String? currentUserId;
+  static String? currentToken;
+  static String? currentRole;
 
             static Future<void> changePassword({
         required String currentPassword,
@@ -157,6 +159,8 @@ class ApiService {
     final data = _decodeResponse(response);
     if (_ok(response)) {
       currentUserId = data['id']?.toString();
+      currentToken = data['token']?.toString();
+      currentRole = data['role']?.toString();
       return data;
     }
     throw Exception(data['message'] ?? 'Đăng nhập không thành công.');
@@ -299,5 +303,7 @@ class ApiService {
 
   static void logout() {
     currentUserId = null;
+    currentToken = null;
+    currentRole = null;
   }
 }

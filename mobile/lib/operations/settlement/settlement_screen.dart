@@ -254,7 +254,10 @@ class _SettlementScreenState extends State<SettlementScreen> {
                           if (mounted) setState(() => _busy = false);
                         }
                       },
-                child: const Text('XÁC NHẬN HOÀN TẤT', fontWeight: FontWeight.bold),
+                child: const Text(
+                  'XÁC NHẬN HOÀN TẤT',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           );
@@ -442,7 +445,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: forest.withOpacity(0.1),
+                    color: forest.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

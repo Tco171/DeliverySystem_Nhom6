@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import 'home_page.dart';
+import 'operations_home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -238,16 +239,26 @@ class _LoginPageState
 
         if (!mounted) return;
 
-        Navigator.of(context)
-            .pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) =>
-                HomePage(
-              user: user,
+        if (ApiService.currentRole == 'operations' ||
+            ApiService.currentRole == 'admin') {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => OperationsHomePage(
+                user: user,
+              ),
             ),
-          ),
-          (_) => false,
-        );
+            (_) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => HomePage(
+                user: user,
+              ),
+            ),
+            (_) => false,
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;

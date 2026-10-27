@@ -228,7 +228,10 @@ class _AssignStaffDialogState extends State<AssignStaffDialog> {
                   height: 18,
                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
-              : const Text('XÁC NHẬN', fontWeight: FontWeight.bold),
+              : const Text(
+                  'XÁC NHẬN',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
         ),
       ],
     );
@@ -482,7 +485,10 @@ class _ReassignStaffDialogState extends State<ReassignStaffDialog> {
                   height: 18,
                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
-              : const Text('XÁC NHẬN', fontWeight: FontWeight.bold),
+              : const Text(
+                  'XÁC NHẬN',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
         ),
       ],
     );

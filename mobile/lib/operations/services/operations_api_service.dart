@@ -5,14 +5,11 @@ import '../models/operations_models.dart';
 
 class OperationsApiService {
   static Map<String, String> _headers() {
-    final headers = <String, String>{
+    return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Authorization': 'Bearer ${ApiService.currentToken}',
     };
-    if (ApiService.currentUserId != null) {
-      headers['X-User-Id'] = ApiService.currentUserId!;
-    }
-    return headers;
   }
 
   static bool _ok(http.Response response) =>
