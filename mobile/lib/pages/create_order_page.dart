@@ -413,6 +413,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               title: 'Chọn vị trí lấy hàng',
               value: _pickupLocation,
               onChanged: (location) {
+                _invalidateQuote();
                 setState(() {
                   _pickupLocation = location;
                 });
@@ -460,6 +461,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               value: _deliveryLocation,
               markerColor: Colors.green,
               onChanged: (location) {
+                _invalidateQuote();
                 setState(() {
                   _deliveryLocation = location;
                 });

@@ -26,14 +26,18 @@ export default function OperationsRoutesPage() {
   const [createForm, setCreateForm] = useState({ name: "", staffId: "", area: "", plannedDate: dateOnly(new Date()), notes: "" });
   const [stopForm, setStopForm] = useState({ shipmentId: "", stopType: "delivery" as "pickup" | "delivery" });
 
-  const loadRoutes = useCallback(async () => {
+  const fetchRoutes = useCallback(async () => {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     if (search.trim()) params.set("search", search.trim());
     const query = params.toString();
     const result = await request<ListResponse>(`/operations/routes${query ? `?${query}` : ""}`);
-    setRoutes(result.data ?? []);
+    return result.data ?? [];
   }, [search, statusFilter]);
+
+  const loadRoutes = useCallback(async () => {
+    setRoutes(await fetchRoutes());
+  }, [fetchRoutes]);
 
   const loadDetail = useCallback(async (id: number) => {
     const result = await request<RouteDetail>(`/operations/routes/${id}`);
@@ -49,7 +53,17 @@ export default function OperationsRoutesPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Không tải được dữ liệu tuyến."); }
   }, [loadRoutes, loadDetail, selectedId]);
 
-  useEffect(() => { void loadRoutes().catch((e: unknown) => setError(e instanceof Error ? e.message : "Không tải được danh sách tuyến.")); }, [loadRoutes]);
+  useEffect(() => {
+    let active = true;
+    fetchRoutes()
+      .then(data => {
+        if (active) setRoutes(data);
+      })
+      .catch((e: unknown) => {
+        if (active) setError(e instanceof Error ? e.message : "Không tải được danh sách tuyến.");
+      });
+    return () => { active = false; };
+  }, [fetchRoutes]);
 
   const mutate = async (action: () => Promise<unknown>, successMessage: string, reload = true) => {
     setBusy(true); setError(""); setNotice("");
@@ -127,7 +141,10 @@ function RouteStopsMap({ stops }: { stops: RouteStop[] }) {
   const elementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stopsRef = useRef(stops);
-  stopsRef.current = stops;
+
+  useEffect(() => {
+    stopsRef.current = stops;
+  }, [stops]);
 
   useEffect(() => {
     if (!elementRef.current || mapRef.current) return;

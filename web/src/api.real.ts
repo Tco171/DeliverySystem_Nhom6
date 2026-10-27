@@ -35,7 +35,7 @@ export interface ShipmentInput {
   service: "standard" | "fast" | "express";
   feePayer: FeePayer;
   notes: string;
-  
+
   pickupLatitude?: number;
   pickupLongitude?: number;
   deliveryLatitude?: number;

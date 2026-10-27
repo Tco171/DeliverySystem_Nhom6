@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api, money, STATUS } from "./api";
 import type { PickupLocation, Quote, Shipment, ShipmentInput } from "./api";
@@ -15,6 +15,9 @@ import { useAuth } from "./auth/context";
 import type { UserRole } from "./api";
 import DispatchPage from "./DispatchPage";
 import SettlementsPage from "./SettlementsPage";
+import MapLocationPicker from "./components/MapLocationPicker";
+
+const OperationsRoutesPage = lazy(() => import("./pages/OperationsRoutesPage"));
 
 type Page =
   | "home"
@@ -29,6 +32,7 @@ type Page =
   | "pricing-services"
   | "support"
   | "dispatch"
+  | "routes"
   | "settlements"
   | "account";
 
@@ -45,6 +49,7 @@ const PATH_MAP: Record<Page, string> = {
   "pricing-services": "/pricing-services",
   support: "/support",
   dispatch: "/dispatch",
+  routes: "/operations/routes",
   settlements: "/settlements",
   account: "/account",
 };
@@ -73,6 +78,7 @@ function getPageFromLocation(): Page | null {
     if (val === "/staff" || val === "staff") return "staff";
     if (val === "/pricing" || val === "pricing") return "pricing";
     if (val === "/dispatch" || val === "dispatch") return "dispatch";
+    if (val === "/operations/routes" || val === "operations/routes" || val === "routes") return "routes";
     if (val === "/dashboard" || val === "dashboard") return "dashboard";
     return null;
   };
@@ -114,6 +120,7 @@ const ROLE_PAGES: Record<UserRole, Page[]> = {
     "pricing-services",
     "support",
     "dispatch",
+    "routes",
     "settlements",
     "account",
   ],
@@ -130,6 +137,12 @@ const emptyForm: ShipmentInput = {
     recipientName: "",
     recipientPhone: "",
     deliveryAddress: "",
+
+    pickupLatitude: undefined,
+    pickupLongitude: undefined,
+    deliveryLatitude: undefined,
+    deliveryLongitude: undefined,
+
     goods: "",
     weightKg: 1,
     lengthCm: 20,
@@ -442,7 +455,17 @@ function Badge({ shipment }: {
         });
     }
     function update<K extends keyof ShipmentInput>(key: K, value: ShipmentInput[K]) {
-        setForm((current) => ({ ...current, [key]: value }));
+        setForm((current) => {
+            const next = { ...current, [key]: value };
+            if (key === "pickupAddress") {
+                next.pickupLatitude = undefined;
+                next.pickupLongitude = undefined;
+            } else if (key === "deliveryAddress") {
+                next.deliveryLatitude = undefined;
+                next.deliveryLongitude = undefined;
+            }
+            return next;
+        });
         setQuote(null);
     }
     function openShipment(shipment: Shipment) {
@@ -452,6 +475,18 @@ function Badge({ shipment }: {
     }
     function submitQuote(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (
+            form.pickupLatitude == null ||
+            form.pickupLongitude == null ||
+            form.deliveryLatitude == null ||
+            form.deliveryLongitude == null
+        ) {
+            setNotice({
+                kind: "error",
+                text: "Vui lòng chọn vị trí lấy hàng và giao hàng trên bản đồ trước khi tính phí.",
+            });
+            return;
+        }
         void run(async () => setQuote(await api.quote(form)));
     }
     const selected = shipments.find((item) => item.id === selectedId);
@@ -481,6 +516,7 @@ function Badge({ shipment }: {
       "pricing-services": "Bảng giá & Dịch vụ",
       support: "Trung tâm hỗ trợ & Chính sách",
       dispatch: "Điều phối giao nhận",
+      routes: "Quản lý tuyến giao hàng",
       settlements: "Đối soát COD",
       account: "Tài khoản của tôi",
     };
@@ -525,6 +561,7 @@ function Badge({ shipment }: {
               ["pricing-services", "≣", "Bảng giá & Dịch vụ"],
               ["support", "?", "Chính sách & FAQ"],
               ["dispatch", "↔", "Điều phối"],
+              ["routes", "↗", "Tuyến giao hàng"],
               ["settlements", "₫", "Đối soát COD"],
               ["account", "◎", "Tài khoản"],
             ] as const)
@@ -873,6 +910,8 @@ function Badge({ shipment }: {
                         senderName: location.contactName,
                         senderPhone: location.contactPhone,
                         pickupAddress: location.address,
+                        pickupLatitude: undefined,
+                        pickupLongitude: undefined,
                     }));
                     // A different pickup address may change the shipping fee.
                     setQuote(null);
@@ -915,6 +954,44 @@ function Badge({ shipment }: {
                       {label}
                       <input required maxLength={300} type={key.endsWith("Phone") ? "tel" : "text"} value={form[key]} onChange={(event) => update(key, event.target.value)}/>
                     </label>))}
+
+                  <div className="full">
+                    <MapLocationPicker
+                      label="Chọn vị trí lấy hàng"
+                      value={
+                        form.pickupLatitude != null && form.pickupLongitude != null
+                          ? { latitude: form.pickupLatitude, longitude: form.pickupLongitude }
+                          : null
+                      }
+                      onChange={(coordinate) => {
+                        setForm((current) => ({
+                          ...current,
+                          pickupLatitude: coordinate.latitude,
+                          pickupLongitude: coordinate.longitude,
+                        }));
+                        setQuote(null);
+                      }}
+                    />
+                  </div>
+                  <div className="full">
+                    <MapLocationPicker
+                      label="Chọn vị trí giao hàng"
+                      color="#16834a"
+                      value={
+                        form.deliveryLatitude != null && form.deliveryLongitude != null
+                          ? { latitude: form.deliveryLatitude, longitude: form.deliveryLongitude }
+                          : null
+                      }
+                      onChange={(coordinate) => {
+                        setForm((current) => ({
+                          ...current,
+                          deliveryLatitude: coordinate.latitude,
+                          deliveryLongitude: coordinate.longitude,
+                        }));
+                        setQuote(null);
+                      }}
+                    />
+                  </div>
 
                   {numberFields.map(([key, label, min, step]) => (<label key={key}>
                       {label}
@@ -1052,7 +1129,7 @@ function Badge({ shipment }: {
                 setShipments((current) => current.map((shipment) => shipment.id === updated.id ? updated : shipment));
             }}/>) : page === "incidents" ? (<IncidentManagement />) : page === "reports" ? (<ReportsPage />) : page === "pricing" ? (<PricingPage />) : page === "pricing-services" ? (<PricingServicesPage onNavigate={navigate} />) : page === "support" ? (<PolicyFAQPage />) : page === "dispatch" ? (<DispatchPage shipments={shipments} loading={loading} onShipmentUpdated={(updated) => {
                 setShipments((current) => current.map((shipment) => shipment.id === updated.id ? updated : shipment));
-            }}/>) : page === "settlements" ? (<SettlementsPage />) : (<section className="panel">
+            }}/>) : page === "routes" ? (<Suspense fallback={<section className="panel"><p role="status">Đang tải quản lý tuyến…</p></section>}><OperationsRoutesPage /></Suspense>) : page === "settlements" ? (<SettlementsPage />) : (<section className="panel">
               <div className="panel-heading">
                 <h2>{page === "dashboard" ? "Đơn hàng gần đây" : "Danh sách đơn hàng"}</h2>
                 <span className="muted">{filtered.length} đơn</span>
