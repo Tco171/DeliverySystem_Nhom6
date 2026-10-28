@@ -1,4 +1,4 @@
-﻿using Back_DeliverySystem.Data;
+using Back_DeliverySystem.Data;
 using Back_DeliverySystem.DTOs.Customer;
 using Back_DeliverySystem.Models;
 using Back_DeliverySystem.Services;
@@ -15,18 +15,21 @@ namespace Back_DeliverySystem.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IVnPayService _vnPayService;
+        private readonly IConfiguration _configuration;
 
         public PaymentsController(
             AppDbContext context,
-            IVnPayService vnPayService)
+            IVnPayService vnPayService,
+            IConfiguration configuration)
         {
             _context = context;
             _vnPayService = vnPayService;
+            _configuration = configuration;
         }
 
 
         // =========================================================
-        // CUSTOMER - TẠO THANH TOÁN VNPAY
+        // CUSTOMER - Táº O THANH TOÃN VNPAY
         // POST: /api/v1/payments/vnpay
         // =========================================================
         [Authorize(Roles = "customer")]
@@ -45,12 +48,12 @@ namespace Back_DeliverySystem.Controllers
             {
                 return Unauthorized(new
                 {
-                    message = "Token không hợp lệ."
+                    message = "Token khÃ´ng há»£p lá»‡."
                 });
             }
 
 
-            // Kiểm tra đơn hàng có thuộc customer này không
+            // Kiá»ƒm tra Ä‘Æ¡n hÃ ng cÃ³ thuá»™c customer nÃ y khÃ´ng
             var shipment =
                 await _context.Shipments
                     .FirstOrDefaultAsync(x =>
@@ -63,18 +66,18 @@ namespace Back_DeliverySystem.Controllers
                 return NotFound(new
                 {
                     message =
-                        "Không tìm thấy đơn hàng hoặc đơn hàng không thuộc tài khoản của bạn."
+                        "KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng hoáº·c Ä‘Æ¡n hÃ ng khÃ´ng thuá»™c tÃ i khoáº£n cá»§a báº¡n."
                 });
             }
 
 
-            // Chỉ shop_prepaid mới thanh toán phí vận chuyển online
+            // Chá»‰ shop_prepaid má»›i thanh toÃ¡n phÃ­ váº­n chuyá»ƒn online
             if (shipment.FeePayer != "shop_prepaid")
             {
                 return BadRequest(new
                 {
                     message =
-                        "Đơn hàng này không sử dụng hình thức người gửi thanh toán phí trước."
+                        "ÄÆ¡n hÃ ng nÃ y khÃ´ng sá»­ dá»¥ng hÃ¬nh thá»©c ngÆ°á»i gá»­i thanh toÃ¡n phÃ­ trÆ°á»›c."
                 });
             }
 
@@ -84,12 +87,12 @@ namespace Back_DeliverySystem.Controllers
                 return BadRequest(new
                 {
                     message =
-                        "Phí vận chuyển của đơn hàng không hợp lệ."
+                        "PhÃ­ váº­n chuyá»ƒn cá»§a Ä‘Æ¡n hÃ ng khÃ´ng há»£p lá»‡."
                 });
             }
 
 
-            // Nếu đã thanh toán thành công rồi thì không tạo lại
+            // Náº¿u Ä‘Ã£ thanh toÃ¡n thÃ nh cÃ´ng rá»“i thÃ¬ khÃ´ng táº¡o láº¡i
             var alreadyPaid =
                 await _context.Payments
                     .AnyAsync(x =>
@@ -102,13 +105,13 @@ namespace Back_DeliverySystem.Controllers
                 return Conflict(new
                 {
                     message =
-                        "Đơn hàng này đã được thanh toán."
+                        "ÄÆ¡n hÃ ng nÃ y Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n."
                 });
             }
 
 
-            // Mã giao dịch gửi sang VNPay
-            // vnp_TxnRef yêu cầu duy nhất
+            // MÃ£ giao dá»‹ch gá»­i sang VNPay
+            // vnp_TxnRef yÃªu cáº§u duy nháº¥t
             var transactionReference =
                 Guid.NewGuid()
                     .ToString("N")
@@ -145,7 +148,7 @@ namespace Back_DeliverySystem.Controllers
                 };
 
 
-            // Lấy IP client
+            // Láº¥y IP client
             var forwardedIp =
                 Request.Headers[
                     "X-Forwarded-For"
@@ -164,7 +167,7 @@ namespace Back_DeliverySystem.Controllers
                         ?? "127.0.0.1";
 
 
-            // Tạo URL thanh toán VNPay
+            // Táº¡o URL thanh toÃ¡n VNPay
             var paymentUrl =
                 _vnPayService.CreatePaymentUrl(
                     payment.Amount,
@@ -174,7 +177,7 @@ namespace Back_DeliverySystem.Controllers
                 );
 
 
-            // Lưu Payment pending
+            // LÆ°u Payment pending
             _context.Payments.Add(
                 payment
             );
@@ -185,7 +188,7 @@ namespace Back_DeliverySystem.Controllers
             return Ok(new
             {
                 message =
-                    "Tạo yêu cầu thanh toán VNPay thành công.",
+                    "Táº¡o yÃªu cáº§u thanh toÃ¡n VNPay thÃ nh cÃ´ng.",
 
                 paymentId =
                     payment.Id,
@@ -205,10 +208,45 @@ namespace Back_DeliverySystem.Controllers
                 paymentUrl
             });
         }
+        [Authorize(Roles = "customer")]
+        [HttpGet("statuses")]
+        public async Task<IActionResult> GetPaymentStatuses()
+        {
+            var customerIdText =
+                User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            if (!int.TryParse(customerIdText, out var customerId))
+                return Unauthorized();
+
+            var payments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.CustomerId == customerId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new
+                {
+                    p.ShipmentId,
+                    p.Status,
+                    p.CreatedAt
+                })
+                .ToListAsync();
+
+            var result = payments
+     .GroupBy(p => p.ShipmentId)
+     .Select(group => new
+     {
+         shipmentId = group.Key,
+         status = group.Any(p => p.Status == "paid")
+             ? "paid"
+             : group.OrderByDescending(p => p.CreatedAt)
+                    .First().Status
+     })
+     .ToList();
+
+            return Ok(result);
+        }
 
         // =========================================================
-        // CUSTOMER - XEM TRẠNG THÁI PAYMENT
+        // CUSTOMER - XEM TRáº NG THÃI PAYMENT
         // GET: /api/v1/payments/{paymentId}
         // =========================================================
         [Authorize(Roles = "customer")]
@@ -242,7 +280,7 @@ namespace Back_DeliverySystem.Controllers
                 return NotFound(new
                 {
                     message =
-                        "Không tìm thấy giao dịch."
+                        "KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch."
                 });
             }
 
@@ -267,7 +305,7 @@ namespace Back_DeliverySystem.Controllers
 
         // =========================================================
         // VNPAY RETURN URL
-        // VNPay redirect trình duyệt khách hàng về đây
+        // VNPay redirect trÃ¬nh duyá»‡t khÃ¡ch hÃ ng vá» Ä‘Ã¢y
         //
         // GET:
         // /api/v1/payments/vnpay/return
@@ -278,20 +316,20 @@ namespace Back_DeliverySystem.Controllers
         {
             var query = Request.Query;
 
-            // 1. Kiểm tra chữ ký
+            // 1. Kiá»ƒm tra chá»¯ kÃ½
             if (!_vnPayService.ValidateSignature(query))
             {
                 return BadRequest(new
                 {
                     success = false,
-                    message = "Chữ ký VNPay không hợp lệ."
+                    message = "Chá»¯ kÃ½ VNPay khÃ´ng há»£p lá»‡."
                 });
             }
 
             var transactionReference =
                 query["vnp_TxnRef"].ToString();
 
-            // 2. Tìm payment
+            // 2. TÃ¬m payment
             var payment =
                 await _context.Payments
                     .FirstOrDefaultAsync(x =>
@@ -304,11 +342,11 @@ namespace Back_DeliverySystem.Controllers
                 return NotFound(new
                 {
                     success = false,
-                    message = "Không tìm thấy giao dịch."
+                    message = "KhÃ´ng tÃ¬m tháº¥y giao dá»‹ch."
                 });
             }
 
-            // 3. Kiểm tra số tiền
+            // 3. Kiá»ƒm tra sá»‘ tiá»n
             if (!long.TryParse(
                     query["vnp_Amount"],
                     out var vnpAmount))
@@ -316,7 +354,7 @@ namespace Back_DeliverySystem.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    message = "Số tiền VNPay trả về không hợp lệ."
+                    message = "Sá»‘ tiá»n VNPay tráº£ vá» khÃ´ng há»£p lá»‡."
                 });
             }
 
@@ -325,7 +363,7 @@ namespace Back_DeliverySystem.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    message = "Số tiền giao dịch không khớp."
+                    message = "Sá»‘ tiá»n giao dá»‹ch khÃ´ng khá»›p."
                 });
             }
 
@@ -341,8 +379,8 @@ namespace Back_DeliverySystem.Controllers
 
             // =====================================================
             // FALLBACK CHO SANDBOX
-            // Nếu IPN chưa gọi về thì Return URL vẫn cập nhật DB.
-            // Chỉ xử lý khi Payment còn pending để tránh update lặp.
+            // Náº¿u IPN chÆ°a gá»i vá» thÃ¬ Return URL váº«n cáº­p nháº­t DB.
+            // Chá»‰ xá»­ lÃ½ khi Payment cÃ²n pending Ä‘á»ƒ trÃ¡nh update láº·p.
             // =====================================================
             if (payment.Status == "pending")
             {
@@ -383,39 +421,27 @@ namespace Back_DeliverySystem.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok(new
+            // URL Ä‘Æ°á»£c cáº¥u hÃ¬nh cá»‘ Ä‘á»‹nh á»Ÿ server, khÃ´ng nháº­n URL redirect tá»« query.
+            // Frontend sá»­ dá»¥ng JWT Ä‘á»ƒ táº£i tráº¡ng thÃ¡i payment tá»« API riÃªng.
+            var webBaseUrl = _configuration["Frontend:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(webBaseUrl) ||
+                !Uri.TryCreate(webBaseUrl, UriKind.Absolute, out var webUri) ||
+                (webUri.Scheme != Uri.UriSchemeHttp && webUri.Scheme != Uri.UriSchemeHttps))
             {
-                success,
+                return StatusCode(500, new { message = "ChÆ°a cáº¥u hÃ¬nh Frontend:BaseUrl há»£p lá»‡." });
+            }
 
-                message =
-                    success
-                        ? "Thanh toán VNPay thành công."
-                        : "Thanh toán VNPay không thành công.",
-
-                paymentId =
-                    payment.Id,
-
-                shipmentId =
-                    payment.ShipmentId,
-
-                amount =
-                    payment.Amount,
-
-                responseCode,
-
-                transactionStatus,
-
-                databaseStatus =
-                    payment.Status
-            });
+            var resultUrl = webBaseUrl.TrimEnd('/') +
+                "/payment/result?paymentId=" + Uri.EscapeDataString(payment.Id);
+            return Redirect(resultUrl);
         }
 
 
         // =========================================================
         // VNPAY IPN
         //
-        // Server VNPay gọi trực tiếp endpoint này.
-        // Đây là nơi cập nhật database.
+        // Server VNPay gá»i trá»±c tiáº¿p endpoint nÃ y.
+        // ÄÃ¢y lÃ  nÆ¡i cáº­p nháº­t database.
         //
         // GET:
         // /api/v1/payments/vnpay/ipn
@@ -430,7 +456,7 @@ namespace Back_DeliverySystem.Controllers
                     Request.Query;
 
 
-                // 1. Kiểm tra checksum
+                // 1. Kiá»ƒm tra checksum
                 if (!_vnPayService
                     .ValidateSignature(query))
                 {
@@ -448,7 +474,7 @@ namespace Back_DeliverySystem.Controllers
                         .ToString();
 
 
-                // 2. Tìm payment
+                // 2. TÃ¬m payment
                 var payment =
                     await _context.Payments
                         .FirstOrDefaultAsync(x =>
@@ -467,7 +493,7 @@ namespace Back_DeliverySystem.Controllers
                 }
 
 
-                // 3. Kiểm tra amount
+                // 3. Kiá»ƒm tra amount
                 if (!long.TryParse(
                         query["vnp_Amount"],
                         out var vnpAmount))
@@ -493,7 +519,7 @@ namespace Back_DeliverySystem.Controllers
                 }
 
 
-                // 4. Tránh xử lý lại giao dịch
+                // 4. TrÃ¡nh xá»­ lÃ½ láº¡i giao dá»‹ch
                 if (payment.Status != "pending")
                 {
                     return Ok(new
@@ -515,7 +541,7 @@ namespace Back_DeliverySystem.Controllers
                     ].ToString();
 
 
-                // Lưu dữ liệu VNPay trả về
+                // LÆ°u dá»¯ liá»‡u VNPay tráº£ vá»
                 payment.ResponseCode =
                     responseCode;
 
@@ -531,7 +557,7 @@ namespace Back_DeliverySystem.Controllers
                         .ToString();
 
 
-                // 5. Thành công
+                // 5. ThÃ nh cÃ´ng
                 if (responseCode == "00" &&
                     transactionStatus == "00")
                 {
@@ -546,13 +572,11 @@ namespace Back_DeliverySystem.Controllers
                     payment.Status =
                         "failed";
                 }
-
-
                 await _context
                     .SaveChangesAsync();
 
 
-                // VNPay yêu cầu JSON RspCode + Message
+                // VNPay yÃªu cáº§u JSON RspCode + Message
                 return Ok(new
                 {
                     RspCode = "00",
@@ -570,5 +594,6 @@ namespace Back_DeliverySystem.Controllers
                 });
             }
         }
+        
     }
 }

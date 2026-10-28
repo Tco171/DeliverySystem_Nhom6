@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'staff_home_page.dart';
 
 import '../services/api_service.dart';
 import 'home_page.dart';
@@ -242,9 +243,9 @@ class _LoginPageState
             .pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) =>
-                HomePage(
-              user: user,
-            ),
+                (user['role'] ?? '').toString().toLowerCase() == 'staff'
+                    ? StaffHomePage(user: user)
+                    : HomePage(user: user),
           ),
           (_) => false,
         );
