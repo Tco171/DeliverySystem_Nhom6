@@ -48,6 +48,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const expired = () => {
+      localStorage.removeItem("express-user");
+      localStorage.removeItem("express-token");
       setUser(null);
       setSessionError("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
       setAuthMode("login");
@@ -70,9 +72,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   async function logout() {
-    await api.logout();
-    setUser(null);
-    setSessionError("");
+    try {
+      await api.logout();
+    } finally {
+      // Also clear React state when the network request rejects.
+      localStorage.removeItem("express-token");
+      localStorage.removeItem("express-user");
+      setUser(null);
+      setAuthOpen(false);
+      setSessionError("");
+    }
   }
 
   function openAuth(mode: AuthMode = "login") {

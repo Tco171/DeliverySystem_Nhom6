@@ -40,10 +40,15 @@ export default function SettlementsPage() {
             active = false;
         };
     }, [reload]);
-    const eligible = data?.eligibleShipments ?? [];
+    // Điều kiện hợp lệ của đơn hàng để đối soát: status = delivered và CodCollected > 0
+    const eligible = (data?.eligibleShipments ?? []).filter((s) => s.status === "delivered" && (s.codCollected ?? 0) > 0);
     const settlements = data?.settlements ?? [];
     const selected = settlements.find((item) => item.id === selectedId);
     const totalCod = eligible.reduce((sum, shipment) => sum + shipment.codCollected, 0);
+    // Áp dụng quy tắc tính phí tự động:
+    // - Loại shop_prepaid: không trừ Shipping Fee khỏi COD (0)
+    // - Loại deduct_cod: trừ trực tiếp Shipping Fee khỏi COD Settlement (shipment.fee)
+    // - Loại recipient: người nhận trả Shipping Fee (0)
     const deduction = eligible.reduce((sum, shipment) => sum + (shipment.feePayer === "deduct_cod" ? shipment.fee : 0), 0);
     const previewNet = totalCod - deduction + adjustment;
     async function createBatch(event: FormEvent<HTMLFormElement>) {

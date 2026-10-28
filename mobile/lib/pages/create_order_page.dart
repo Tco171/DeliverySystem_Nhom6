@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
+import '../widgets/map_location_picker.dart';
 
 import '../services/api_service.dart';
 
@@ -47,6 +49,8 @@ class _CreateOrderPageState
   bool _loading = false;
 
   Map<String, dynamic>? _quote;
+  LatLng? _pickupLocation;
+  LatLng? _deliveryLocation;
 
   // =========================================================
   // COLORS
@@ -200,6 +204,8 @@ class _CreateOrderPageState
       'senderPhone': _senderPhone.text.trim(),
 
       'pickupAddress': _pickup.text.trim(),
+      'pickupLatitude': _pickupLocation?.latitude,
+      'pickupLongitude': _pickupLocation?.longitude,
 
       'recipientName':
           _recipientName.text.trim(),
@@ -208,6 +214,8 @@ class _CreateOrderPageState
 
       'deliveryAddress':
           _delivery.text.trim(),
+      'deliveryLatitude': _deliveryLocation?.latitude,
+      'deliveryLongitude': _deliveryLocation?.longitude,
 
       'goods': _goods.text.trim(),
 
@@ -241,6 +249,10 @@ class _CreateOrderPageState
 
   Future<void> _quoteOrder() async {
     FocusScope.of(context).unfocus();
+    if (_pickupLocation == null || _deliveryLocation == null) {
+      _show('Vui lòng chọn cả hai vị trí trên bản đồ trước khi báo giá.', true);
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) {
       _show(
@@ -400,6 +412,12 @@ class _CreateOrderPageState
                 ),
 
         onChanged: (_) {
+          // Đổi địa chỉ phải chọn lại điểm trên bản đồ, và báo giá cũ hết hiệu lực.
+          if (identical(controller, _pickup)) {
+            setState(() => _pickupLocation = null);
+          } else if (identical(controller, _delivery)) {
+            setState(() => _deliveryLocation = null);
+          }
           _invalidateQuote();
         },
 
@@ -496,6 +514,16 @@ class _CreateOrderPageState
 
             const SizedBox(height: 20),
 
+            MapLocationPicker(
+              title: 'Chọn vị trí lấy hàng',
+              value: _pickupLocation,
+              onChanged: (location) {
+                _invalidateQuote();
+                setState(() => _pickupLocation = location);
+              },
+            ),
+            const SizedBox(height: 20),
+
             // ===============================================
             // NGƯỜI NHẬN
             // ===============================================
@@ -543,6 +571,17 @@ class _CreateOrderPageState
               ],
             ),
 
+            const SizedBox(height: 20),
+
+            MapLocationPicker(
+              title: 'Chọn vị trí giao hàng',
+              value: _deliveryLocation,
+              markerColor: Colors.green,
+              onChanged: (location) {
+                _invalidateQuote();
+                setState(() => _deliveryLocation = location);
+              },
+            ),
             const SizedBox(height: 20),
 
             // ===============================================

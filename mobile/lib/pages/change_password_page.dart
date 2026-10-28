@@ -130,7 +130,7 @@ class _ChangePasswordPageState
 
       if (!mounted) return;
 
-      ApiService.logout();
+      await ApiService.logout();
 
       ScaffoldMessenger.of(context)
           .showSnackBar(

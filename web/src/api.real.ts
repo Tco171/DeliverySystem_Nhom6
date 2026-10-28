@@ -1,13 +1,16 @@
 import { request } from "./lib/http";
 export const STATUS = {
   pending_pickup: "Chờ lấy hàng",
+  picking_up: "Đang lấy hàng",
   pickup_failed: "Lấy hàng thất bại",
   picked_up: "Đã lấy hàng",
   in_transit: "Đang vận chuyển",
   at_hub: "Đã đến kho",
   out_for_delivery: "Đang giao hàng",
+  delivering: "Đang giao hàng",
   delivery_failed: "Giao hàng thất bại",
   delivered: "Giao thành công",
+  return_pending: "Chờ hoàn hàng",
   returning: "Đang hoàn hàng",
   returned: "Đã giao hoàn",
   return_confirmed: "Shop đã nhận hàng hoàn",
@@ -35,6 +38,10 @@ export interface ShipmentInput {
   service: "standard" | "fast" | "express";
   feePayer: FeePayer;
   notes: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
 }
 
 export interface Quote {
@@ -604,7 +611,7 @@ async changePassword(input: { currentPassword: string; newPassword: string }): P
 
 async getSession(): Promise<SessionUser | null> {
   const saved = localStorage.getItem("express-user");
-  if (!saved) return null;
+  if (!saved || !localStorage.getItem("express-token")) return null;
 
   try {
     return checkedSession(JSON.parse(saved) as SessionUser);
@@ -614,10 +621,15 @@ async getSession(): Promise<SessionUser | null> {
   }
 },
 async login(input: {email:string;password:string}): Promise<SessionUser> {
-  const user = checkedSession(await request<SessionUser>('/auth/login',{
-    method:'POST',
-    body:JSON.stringify({...input,email:input.email.trim()})
-  }));
+  localStorage.removeItem("express-token");
+  localStorage.removeItem("express-user");
+  const response = await request<SessionUser & { token: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({...input, email: input.email.trim()})
+  });
+  if (!response.token) throw new Error("Backend không trả JWT token.");
+  const user = checkedSession(response);
+  localStorage.setItem("express-token", response.token);
   localStorage.setItem("express-user", JSON.stringify(user));
   return user;
 },
@@ -625,8 +637,10 @@ async register(input: RegisterInput): Promise<RegisterResult> {
  return request<RegisterResult>('/auth/register',{method:'POST',body:JSON.stringify({fullName:input.fullName.trim(),shopName:input.shopName.trim(),phone:input.phone.trim(),email:input.email.trim(),password:input.password})});
 },
 async logout(): Promise<void> {
-  try { await request<unknown>('/auth/logout',{method:'POST'}); }
-  finally { localStorage.removeItem("express-user"); }
+  // JWT is stateless in this backend: there is no server-side session to revoke.
+  // Logout is entirely local and must not wait for an API that may be offline.
+  localStorage.removeItem("express-user");
+  localStorage.removeItem("express-token");
 }
 
 };

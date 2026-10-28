@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api, money, STATUS } from "./api";
 import type { PickupLocation, Quote, Shipment, ShipmentInput } from "./api";
 import "./App.css";
 import IncidentPanel from "./IncidentPanel";
-import StaffTasks from "./StaffTasks";
+import StaffSprint2 from "./StaffSprint2";
+import VnPayPanel from "./VnPayPanel";
+import PaymentResultPage from "./PaymentResultPage";
+import OperationsLayout from "./OperationsLayout";
+import type { OperationsSection } from "./OperationsLayout";
+import "./OperationsLayout.css";
+import { paymentStatusApi } from "./lib/sprint2";
 import WarehousePage from "./WarehousePage";
 import IncidentManagement from "./IncidentManagement";
 import ReportsPage from "./ReportsPage";
@@ -15,6 +21,8 @@ import { useAuth } from "./auth/context";
 import type { UserRole } from "./api";
 import DispatchPage from "./DispatchPage";
 import SettlementsPage from "./SettlementsPage";
+import MapLocationPicker from "./components/MapLocationPicker";
+const OperationsRoutesPage = lazy(() => import("./pages/OperationsRoutesPage"));
 
 type Page =
   | "home"
@@ -29,8 +37,10 @@ type Page =
   | "pricing-services"
   | "support"
   | "dispatch"
+  | "routes"
   | "settlements"
-  | "account";
+  | "account"
+  | "payment-result";
 
 const PATH_MAP: Record<Page, string> = {
   home: "/",
@@ -45,8 +55,10 @@ const PATH_MAP: Record<Page, string> = {
   "pricing-services": "/pricing-services",
   support: "/support",
   dispatch: "/dispatch",
+  routes: "/operations/routes",
   settlements: "/settlements",
   account: "/account",
+  "payment-result": "/payment/result",
 };
 
 function getPageFromLocation(): Page | null {
@@ -59,6 +71,7 @@ function getPageFromLocation(): Page | null {
       return "home";
     }
 
+    if (val === "/payment/result" || val === "payment/result" || val === "payment-result") return "payment-result";
     if (val === "/account" || val === "account") {
       return "account";
     }
@@ -73,6 +86,7 @@ function getPageFromLocation(): Page | null {
     if (val === "/staff" || val === "staff") return "staff";
     if (val === "/pricing" || val === "pricing") return "pricing";
     if (val === "/dispatch" || val === "dispatch") return "dispatch";
+    if (val === "/operations/routes" || val === "operations/routes" || val === "routes") return "routes";
     if (val === "/dashboard" || val === "dashboard") return "dashboard";
     return null;
   };
@@ -85,6 +99,7 @@ const PUBLIC_PAGES: Page[] = [
   "create",
   "pricing-services",
   "support",
+  "payment-result",
 ];
 
 const ROLE_PAGES: Record<UserRole, Page[]> = {
@@ -114,6 +129,7 @@ const ROLE_PAGES: Record<UserRole, Page[]> = {
     "pricing-services",
     "support",
     "dispatch",
+    "routes",
     "settlements",
     "account",
   ],
@@ -127,9 +143,13 @@ const emptyForm: ShipmentInput = {
     senderName: "",
     senderPhone: "",
     pickupAddress: "",
+    pickupLatitude: undefined,
+    pickupLongitude: undefined,
     recipientName: "",
     recipientPhone: "",
     deliveryAddress: "",
+    deliveryLatitude: undefined,
+    deliveryLongitude: undefined,
     goods: "",
     weightKg: 1,
     lengthCm: 20,
@@ -168,6 +188,7 @@ function Badge({ shipment }: {
 }
   export default function App() {
     const { user, logout } = useAuth();
+    const [paymentStatuses, setPaymentStatuses] = useState<Record<string, string>>({});
 
     const normalizedRole: UserRole | null = user
       ? (user.role as string) === "shop"
@@ -175,14 +196,13 @@ function Badge({ shipment }: {
         : user.role
       : null;
 
-    const allowedPages: Page[] = normalizedRole
-      ? Array.from(
-          new Set([
-            ...PUBLIC_PAGES,
-            ...ROLE_PAGES[normalizedRole],
-          ]),
-        )
-      : PUBLIC_PAGES;
+    const allowedPages: Page[] = normalizedRole === "staff"
+      ? ROLE_PAGES.staff
+      : normalizedRole === "operations"
+        ? ROLE_PAGES.operations
+        : normalizedRole
+          ? Array.from(new Set([...PUBLIC_PAGES, ...ROLE_PAGES[normalizedRole]]))
+          : PUBLIC_PAGES;
 
         const [page, setPage] = useState<Page>(() => {
       const initialFromUrl =
@@ -201,29 +221,34 @@ function Badge({ shipment }: {
 
       return normalizedRole === "staff"
         ? "staff"
-        : "dashboard";
+        : normalizedRole === "operations" ? "shipments" : "dashboard";
     });
 
       useEffect(() => {
-    if (!user) {
-      setPage("home");
-      return;
-    }
-
-    if (page === "home") {
-      setPage(
-        normalizedRole === "staff"
-          ? "staff"
-          : "dashboard",
-      );
-    }
-    }, [user, normalizedRole]);
+        // VNPay Return URL tải lại trang: giữ đường dẫn kết quả trong khi khôi phục JWT.
+        if (getPageFromLocation() === "payment-result") {
+          setPage("payment-result");
+          return;
+        }
+        if (!user) {
+          setPage("home");
+          return;
+        }
+        setPage((current) => {
+          if (!allowedPages.includes(current) || current === "home") {
+            return normalizedRole === "staff" ? "staff" : normalizedRole === "operations" ? "shipments" : "dashboard";
+          }
+          return current;
+        });
+      }, [user, normalizedRole]);
 
     const navigate = (target: Page | string) => {
         let targetPage: Page = "home";
 
         if (target === "/" || target === "home") {
           targetPage = "home";
+        } else if (target === "/payment/result" || target === "payment-result") {
+          targetPage = "payment-result";
         } else if (target === "/account" || target === "account") {
           targetPage = "account";
         } else if (
@@ -252,7 +277,7 @@ function Badge({ shipment }: {
         if (!allowedPages.includes(targetPage)) {
           setNotice({
             kind: "error",
-            text: "Bạn cần đăng nhập để sử dụng chức năng này.",
+            text: user ? "Bạn không có quyền truy cập chức năng này." : "Bạn cần đăng nhập để sử dụng chức năng này.",
           });
           return;
         }
@@ -310,6 +335,26 @@ function Badge({ shipment }: {
     
     
     const [notice, setNotice] = useState<Notice | null>(null);
+    async function handleLogout() {
+      if (signingOut) return;
+      setSigningOut(true);
+      try {
+        await logout();
+        // Avoid role-based navigate() while React is still rendering the old role.
+        setPage("home");
+        setSelectedId(null);
+        window.history.replaceState(null, "", "/");
+      } catch (error) {
+        setNotice({
+          kind: "error",
+          text: error instanceof Error ? error.message : "Không đăng xuất được.",
+        });
+      } finally {
+        setSigningOut(false);
+      }
+    }
+
+
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [trackingCode, setTrackingCode] = useState("");
@@ -394,6 +439,50 @@ function Badge({ shipment }: {
           active = false;
         };
       }, [user]);
+
+    useEffect(() => {
+      if (!user || normalizedRole !== "customer" || page !== "shipments") return;
+      let alive = true;
+      const refresh = async () => {
+        try {
+          const rows = await paymentStatusApi.list();
+          if (alive) setPaymentStatuses(Object.fromEntries(rows.map((r) => [r.shipmentId, r.status])));
+        } catch (error) {
+          console.error("Không thể tải trạng thái thanh toán:", error);
+        }
+      };
+      void refresh();
+      const timer = window.setInterval(() => { if (document.visibilityState !== "hidden") void refresh(); }, 15000);
+      const focus = () => { void refresh(); };
+      window.addEventListener("focus", focus);
+      return () => {
+        alive = false;
+        window.clearInterval(timer);
+        window.removeEventListener("focus", focus);
+      };
+    }, [user?.id, normalizedRole, page]);
+
+    useEffect(() => {
+      if (!user || normalizedRole !== "operations" || page !== "shipments") return;
+      let alive = true;
+      const refresh = async () => {
+        try {
+          const rows = await api.list();
+          if (alive) setShipments(rows);
+        } catch (error) {
+          console.error("Không thể làm mới đơn Operations:", error);
+        }
+      };
+      void refresh();
+      const timer = window.setInterval(() => { if (document.visibilityState !== "hidden") void refresh(); }, 15000);
+      const focus = () => { void refresh(); };
+      window.addEventListener("focus", focus);
+      return () => {
+        alive = false;
+        window.clearInterval(timer);
+        window.removeEventListener("focus", focus);
+      };
+    }, [user?.id, normalizedRole, page]);
     function handleTracking(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setSelectedId(null);
@@ -442,7 +531,17 @@ function Badge({ shipment }: {
         });
     }
     function update<K extends keyof ShipmentInput>(key: K, value: ShipmentInput[K]) {
-        setForm((current) => ({ ...current, [key]: value }));
+        setForm((current) => {
+            const next = { ...current, [key]: value };
+            if (key === "pickupAddress") {
+                next.pickupLatitude = undefined;
+                next.pickupLongitude = undefined;
+            } else if (key === "deliveryAddress") {
+                next.deliveryLatitude = undefined;
+                next.deliveryLongitude = undefined;
+            }
+            return next;
+        });
         setQuote(null);
     }
     function openShipment(shipment: Shipment) {
@@ -452,6 +551,11 @@ function Badge({ shipment }: {
     }
     function submitQuote(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (form.pickupLatitude == null || form.pickupLongitude == null ||
+            form.deliveryLatitude == null || form.deliveryLongitude == null) {
+            setNotice({ kind: "error", text: "Vui lòng chọn cả hai vị trí trên bản đồ trước khi báo giá." });
+            return;
+        }
         void run(async () => setQuote(await api.quote(form)));
     }
     const selected = shipments.find((item) => item.id === selectedId);
@@ -481,139 +585,12 @@ function Badge({ shipment }: {
       "pricing-services": "Bảng giá & Dịch vụ",
       support: "Trung tâm hỗ trợ & Chính sách",
       dispatch: "Điều phối giao nhận",
+      routes: "Quản lý tuyến giao hàng",
       settlements: "Đối soát COD",
       account: "Tài khoản của tôi",
+      "payment-result": "Kết quả thanh toán VNPay",
     };
-    return (<div className="app">
-      <aside className="sidebar">
-        <a
-            className="brand"
-            href="/"
-            onClick={(event) => {
-              event.preventDefault();
-
-              if (!user) {
-                navigate("home");
-              } else {
-                navigate(
-                  user.role === "staff"
-                    ? "staff"
-                    : "dashboard",
-                );
-              }
-            }}
-          >
-            <span className="brand-icon">E</span>
-            express<span className="brand-dot">.</span>
-        </a>
-
-        <p className="nav-caption">
-          {user ? "KHÔNG GIAN LÀM VIỆC" : "KHÁM PHÁ EXPRESS"}
-        </p>
-
-        <nav aria-label="Điều hướng chính">
-          {([
-              ["home", "⌂", "Trang chủ"],
-              ["dashboard", "◫", "Tổng quan"],
-              ["shipments", "▤", "Đơn hàng"],
-              ["create", "+", user ? "Tạo đơn mới" : "Tạo đơn nhanh"],
-              ["staff", "↗", "Việc giao nhận"],
-              ["warehouse", "▣", "Kho & trung chuyển"],
-              ["incidents", "!", "Xử lý sự cố"],
-              ["reports", "▥", "Báo cáo"],
-              ["pricing", "₫", "Cấu hình giá"],
-              ["pricing-services", "≣", "Bảng giá & Dịch vụ"],
-              ["support", "?", "Chính sách & FAQ"],
-              ["dispatch", "↔", "Điều phối"],
-              ["settlements", "₫", "Đối soát COD"],
-              ["account", "◎", "Tài khoản"],
-            ] as const)
-            .filter(([key]) => allowedPages.includes(key))
-            .map(([key, icon, label]) => {
-              const isActive = page === key;
-              return (
-                <button
-                  key={key}
-                  className={isActive ? "nav active" : "nav"}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => navigate(key)}
-                >
-                  <span aria-hidden="true">{icon}</span>{label}
-                </button>
-              );
-            })}
-        </nav>
-
-        <div className="sidebar-note">
-          <strong>Mỗi đơn hàng, một hành trình.</strong>
-          <p>Theo dõi vận chuyển tại một nơi.</p>
-        </div>
-      </aside>
-
-      <main>
-        <header className="topbar">
-          <span>Cổng quản lý giao hàng</span>
-
-          <div className="account-controls">
-                {user ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => navigate("account")}
-                    >
-                      {user.name}
-                    </button>
-
-                    <span className="environment">
-                      ● Kết nối API
-                    </span>
-
-                    <button
-                      type="button"
-                      disabled={signingOut}
-                      onClick={async () => {
-                        setSigningOut(true);
-
-                        try {
-                          await logout();
-                          navigate("home");
-                        } catch (error) {
-                          setNotice({
-                            kind: "error",
-                            text:
-                              error instanceof Error
-                                ? error.message
-                                : "Không đăng xuất được.",
-                          });
-                        } finally {
-                          setSigningOut(false);
-                        }
-                      }}
-                    >
-                      {signingOut
-                        ? "Đang thoát…"
-                        : "Đăng xuất"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="environment">
-                      ● Khách vãng lai
-                    </span>
-
-                    <button
-                    type="button"
-                    className="primary"
-                    onClick={() => requestAuth("login")}
-                  >
-                    Đăng nhập
-                  </button>
-                  </>
-                  )}
-              </div>
-        </header>
-
-        <div className="content">
+    const renderContent = (<>
           <div className="page-heading">
             <div>
               <p className="eyebrow">
@@ -639,6 +616,7 @@ function Badge({ shipment }: {
               {notice.text}
             </div>)}
 
+            {page === "payment-result" && <PaymentResultPage onNavigate={navigate} />}
             {page === "home" && (
   <>
               <section className="hero">
@@ -873,6 +851,8 @@ function Badge({ shipment }: {
                         senderName: location.contactName,
                         senderPhone: location.contactPhone,
                         pickupAddress: location.address,
+                        pickupLatitude: undefined,
+                        pickupLongitude: undefined,
                     }));
                     // A different pickup address may change the shipping fee.
                     setQuote(null);
@@ -916,6 +896,54 @@ function Badge({ shipment }: {
                       <input required maxLength={300} type={key.endsWith("Phone") ? "tel" : "text"} value={form[key]} onChange={(event) => update(key, event.target.value)}/>
                     </label>))}
 
+                  <div className="full">
+                      <MapLocationPicker
+                        label="Chọn vị trí lấy hàng"
+                        address={form.pickupAddress}
+                        value={
+                          form.pickupLatitude != null && form.pickupLongitude != null
+                            ? {
+                                latitude: form.pickupLatitude,
+                                longitude: form.pickupLongitude,
+                              }
+                            : null
+                        }
+                        onChange={(coordinate) => {
+                          setForm((current) => ({
+                            ...current,
+                            pickupLatitude: coordinate.latitude,
+                            pickupLongitude: coordinate.longitude,
+                          }));
+
+                          setQuote(null);
+                        }}
+                        />
+                    </div>
+
+                    <div className="full">
+                      <MapLocationPicker
+                        label="Chọn vị trí giao hàng"
+                        address={form.deliveryAddress}
+                        color="#16834a"
+                        value={
+                          form.deliveryLatitude != null && form.deliveryLongitude != null
+                            ? {
+                                latitude: form.deliveryLatitude,
+                                longitude: form.deliveryLongitude,
+                              }
+                            : null
+                        }
+                        onChange={(coordinate) => {
+                          setForm((current) => ({
+                            ...current,
+                            deliveryLatitude: coordinate.latitude,
+                            deliveryLongitude: coordinate.longitude,
+                          }));
+
+                          setQuote(null);
+                        }}
+                      />
+                    </div>
                   {numberFields.map(([key, label, min, step]) => (<label key={key}>
                       {label}
                       <input required type="number" min={min} step={step} value={form[key]} onChange={(event) => update(key, event.target.valueAsNumber)}/>
@@ -1044,15 +1072,13 @@ function Badge({ shipment }: {
                   </div>
                 </div>
               </fieldset>
-              </form>) : page === "staff" ? (<StaffTasks shipments={user?.role === "staff"
-                ? shipments.filter((shipment) => shipment.assignedStaffId === user.id)
-                : shipments} loading={loading} onShipmentUpdated={(updated) => {
-                setShipments((current) => current.map((shipment) => shipment.id === updated.id ? updated : shipment));
-            }}/>) : page === "warehouse" ? (<WarehousePage shipments={shipments} loading={loading} onShipmentUpdated={(updated) => {
+              </form>) : page === "staff" ? (<StaffSprint2 />) : page === "warehouse" ? (<WarehousePage shipments={shipments} loading={loading} onShipmentUpdated={(updated) => {
                 setShipments((current) => current.map((shipment) => shipment.id === updated.id ? updated : shipment));
             }}/>) : page === "incidents" ? (<IncidentManagement />) : page === "reports" ? (<ReportsPage />) : page === "pricing" ? (<PricingPage />) : page === "pricing-services" ? (<PricingServicesPage onNavigate={navigate} />) : page === "support" ? (<PolicyFAQPage />) : page === "dispatch" ? (<DispatchPage shipments={shipments} loading={loading} onShipmentUpdated={(updated) => {
                 setShipments((current) => current.map((shipment) => shipment.id === updated.id ? updated : shipment));
-            }}/>) : page === "settlements" ? (<SettlementsPage />) : (<section className="panel">
+            }}/>) : page === "routes" ? (<Suspense fallback={<section className="panel"><p role="status">Đang tải quản lý tuyến…</p></section>}><OperationsRoutesPage /></Suspense>) : page === "settlements" ? (<SettlementsPage />) : page === "payment-result" ? null : page === "account" ? (
+              <section className="panel"><h2>Tài khoản</h2><p>Thông tin tài khoản: {user?.name ?? "Khách"}</p></section>
+            ) : (<section className="panel">
               <div className="panel-heading">
                 <h2>{page === "dashboard" ? "Đơn hàng gần đây" : "Danh sách đơn hàng"}</h2>
                 <span className="muted">{filtered.length} đơn</span>
@@ -1076,6 +1102,7 @@ function Badge({ shipment }: {
                         <th>Mã vận đơn</th>
                         <th>Người nhận</th>
                         <th>Trạng thái</th>
+                        <th>Thanh toán</th>
                         <th>COD</th>
                         <th>Phí giao</th>
                         <th>Chi tiết</th>
@@ -1095,6 +1122,17 @@ function Badge({ shipment }: {
                               <small>{shipment.recipientPhone}</small>
                             </td>
                             <td><Badge shipment={shipment}/></td>
+                            <td>{normalizedRole === "operations"
+                                ? "Chưa có API thanh toán cho Operations"
+                                : shipment.feePayer !== "shop_prepaid"
+                                  ? "Thu phí theo hình thức khác"
+                                  : paymentStatuses[shipment.id] === "paid"
+                                    ? "Đã thanh toán"
+                                    : paymentStatuses[shipment.id] === "pending"
+                                      ? "Chờ thanh toán"
+                                      : paymentStatuses[shipment.id] === "failed"
+                                        ? "Thanh toán thất bại"
+                                        : "Chưa thanh toán"}</td>
                             <td>{money(shipment.codAmount)}</td>
                             <td>{money(shipment.fee)}</td>
                             <td>
@@ -1138,9 +1176,153 @@ function Badge({ shipment }: {
               </ol>
               
               <IncidentPanel key={selected.id} shipmentId={selected.id}/>
+              {normalizedRole === "customer" && (
+                <VnPayPanel key={selected.id} shipmentId={selected.id} feePayer={selected.feePayer} />
+              )}
 
               {null}
             </section>)}
+    </>);
+    const operationsSection: OperationsSection =
+      page === "settlements" ? "settlements" : page === "routes" ? "routes" : "orders";
+    if (normalizedRole === "operations") {
+      return (
+        <OperationsLayout
+          section={operationsSection}
+          onSectionChange={(section) => navigate(section === "orders" ? "shipments" : section === "routes" ? "routes" : "settlements")}
+          userName={user?.name ?? "Operations"}
+          signingOut={signingOut}
+          onLogout={() => { void handleLogout(); }}
+        >
+          {(page === "shipments" || page === "dispatch") && (
+            <div className="operations-order-tabs" style={{display:"flex", gap:12, margin:"12px 18px"}}>
+              <button type="button" onClick={() => navigate("shipments")}
+                aria-current={page === "shipments" ? "page" : undefined}>Danh sách đơn</button>
+              <button type="button" onClick={() => navigate("dispatch")}
+                aria-current={page === "dispatch" ? "page" : undefined}>Phân công / Điều phối</button>
+            </div>
+          )}
+          {renderContent}
+        </OperationsLayout>
+      );
+    }
+    return (<div className="app">
+      <aside className="sidebar">
+        <a
+            className="brand"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+
+              if (!user) {
+                navigate("home");
+              } else {
+                navigate(
+                  user.role === "staff"
+                    ? "staff"
+                    : "dashboard",
+                );
+              }
+            }}
+          >
+            <span className="brand-icon">E</span>
+            express<span className="brand-dot">.</span>
+        </a>
+
+        <p className="nav-caption">
+          {normalizedRole === "staff" ? "STAFF / GIAO NHẬN" : user ? "KHÔNG GIAN LÀM VIỆC" : "KHÁM PHÁ EXPRESS"}
+        </p>
+
+        <nav aria-label="Điều hướng chính">
+          {(normalizedRole === "staff" ? ([
+              ["staff", "⌂", "Trang chủ Staff"],
+              ["account", "◎", "Tài khoản"],
+            ] as const) : ([
+              ["home", "⌂", "Trang chủ"],
+              ["dashboard", "◫", "Tổng quan"],
+              ["shipments", "▤", "Đơn hàng"],
+              ["create", "+", user ? "Tạo đơn mới" : "Tạo đơn nhanh"],
+              ["staff", "↗", "Việc giao nhận"],
+              ["warehouse", "▣", "Kho & trung chuyển"],
+              ["incidents", "!", "Xử lý sự cố"],
+              ["reports", "▥", "Báo cáo"],
+              ["pricing", "₫", "Cấu hình giá"],
+              ["pricing-services", "≣", "Bảng giá & Dịch vụ"],
+              ["support", "?", "Chính sách & FAQ"],
+              ["dispatch", "↔", "Điều phối"],
+              ["settlements", "₫", "Đối soát COD"],
+              ["account", "◎", "Tài khoản"],
+            ] as const))
+            .filter(([key]) => allowedPages.includes(key))
+            .map(([key, icon, label]) => {
+              const isActive = page === key;
+              return (
+                <button
+                  key={key}
+                  className={isActive ? "nav active" : "nav"}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => navigate(key)}
+                >
+                  <span aria-hidden="true">{icon}</span>{label}
+                </button>
+              );
+            })}
+        </nav>
+
+        <div className="sidebar-note">
+          <strong>Mỗi đơn hàng, một hành trình.</strong>
+          <p>Theo dõi vận chuyển tại một nơi.</p>
+        </div>
+      </aside>
+
+      <main>
+        <header className="topbar">
+          <span>Cổng quản lý giao hàng</span>
+
+          <div className="account-controls">
+                {user ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate("account")}
+                    >
+                      {user.name}
+                    </button>
+
+                    <span className="environment">
+                      ● Kết nối API
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={signingOut}
+                      onClick={() => { void handleLogout(); }}
+                    >
+                      {signingOut
+                        ? "Đang thoát…"
+                        : "Đăng xuất"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="environment">
+                      ● Khách vãng lai
+                    </span>
+
+                    <button
+                    type="button"
+                    className="primary"
+                    onClick={() => requestAuth("login")}
+                  >
+                    Đăng nhập
+                  </button>
+                  </>
+                  )}
+              </div>
+        </header>
+
+        <div className="content">
+          {renderContent}
         </div>
       </main>
     </div>);
