@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../services/api_service.dart';
-import '../services/staff_api_service.dart';
-import 'home_page.dart';
-
+import 'package:mobile/pages/home_page.dart';
+import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/staff_api_service.dart';
 class StaffAssignmentsPage extends StatefulWidget {
   final Map<String, dynamic>? user;
 
