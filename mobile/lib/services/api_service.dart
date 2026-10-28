@@ -9,15 +9,15 @@ class ApiService {
         defaultValue: false,
       );
   static const String _configuredBaseUrl = '';
-
 static String get baseUrl {
   if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
-  if (kIsWeb) return 'http://localhost:5000';
+  if (kIsWeb) return 'http://localhost:5274';
   if (defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:5000';
+    return 'http://10.0.2.2:5274';
   }
-  return 'http://localhost:5000';
+  return 'http://localhost:5274';
 }
+
 
   static String? currentUserId;
   static String? currentToken;
