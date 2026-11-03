@@ -167,6 +167,11 @@ namespace Back_DeliverySystem
                 app.Services
             );
 
+            // Sprint 3: phường/xã/đặc khu + StaffArea + capacity.
+            await Sprint3SeedData.InitializeAsync(
+                app.Services
+            );
+
 
             // =====================================================
             // RUN
