@@ -74,6 +74,58 @@ public class OperationsAreasController : ControllerBase
             x => x.Count
         );
 
+        var waitingAssignmentCounts = await _db.Shipments
+            .AsNoTracking()
+            .Where(shipment =>
+                shipment.DeliveryAreaId != null &&
+                (shipment.Status == "pending_pickup" ||
+                 shipment.Status == "pickup_failed") &&
+                !_db.DeliveryAssignments.Any(assignment =>
+                    assignment.ShipmentId == shipment.Id &&
+                    assignment.IsActive) &&
+                (shipment.FeePayer != "shop_prepaid" ||
+                 _db.Payments.Any(payment =>
+                    payment.ShipmentId == shipment.Id &&
+                    payment.Status == "paid")))
+            .GroupBy(shipment => shipment.DeliveryAreaId!.Value)
+            .Select(grouped => new
+            {
+                AreaId = grouped.Key,
+                Count = grouped.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var waitingAssignmentLookup = waitingAssignmentCounts.ToDictionary(
+            x => x.AreaId,
+            x => x.Count
+        );
+
+        var waitingPaymentCounts = await _db.Shipments
+            .AsNoTracking()
+            .Where(shipment =>
+                shipment.DeliveryAreaId != null &&
+                (shipment.Status == "pending_pickup" ||
+                 shipment.Status == "pickup_failed") &&
+                shipment.FeePayer == "shop_prepaid" &&
+                !_db.DeliveryAssignments.Any(assignment =>
+                    assignment.ShipmentId == shipment.Id &&
+                    assignment.IsActive) &&
+                !_db.Payments.Any(payment =>
+                    payment.ShipmentId == shipment.Id &&
+                    payment.Status == "paid"))
+            .GroupBy(shipment => shipment.DeliveryAreaId!.Value)
+            .Select(grouped => new
+            {
+                AreaId = grouped.Key,
+                Count = grouped.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var waitingPaymentLookup = waitingPaymentCounts.ToDictionary(
+            x => x.AreaId,
+            x => x.Count
+        );
+
         var result = areas.Select(area =>
         {
             var assignments = staffAreas
@@ -108,6 +160,28 @@ public class OperationsAreasController : ControllerBase
                 })
                 .ToList();
 
+            var activeAreaAssignments = assignments
+                .Where(x => x.isActive)
+                .ToList();
+
+            var totalCapacity = activeAreaAssignments
+                .Sum(x => x.maxActiveOrders);
+
+            var activeOrders = activeAreaAssignments
+                .Sum(x => x.activeOrders);
+
+            var waitingAssignments = waitingAssignmentLookup.TryGetValue(
+                area.Id,
+                out var waitingCount)
+                    ? waitingCount
+                    : 0;
+
+            var waitingPayments = waitingPaymentLookup.TryGetValue(
+                area.Id,
+                out var waitingPaymentCount)
+                    ? waitingPaymentCount
+                    : 0;
+
             return new
             {
                 id = area.Id,
@@ -115,13 +189,13 @@ public class OperationsAreasController : ControllerBase
                 name = area.Name,
                 type = area.Type,
                 isActive = area.IsActive,
-                staffCount = assignments.Count(x => x.isActive),
-                totalCapacity = assignments
-                    .Where(x => x.isActive)
-                    .Sum(x => x.maxActiveOrders),
-                activeOrders = assignments
-                    .Where(x => x.isActive)
-                    .Sum(x => x.activeOrders),
+                staffCount = activeAreaAssignments.Count,
+                totalCapacity,
+                activeOrders,
+                availableCapacity = Math.Max(totalCapacity - activeOrders, 0),
+                waitingAssignments,
+                waitingPayments,
+                hasCapacityAlert = waitingAssignments > 0,
                 staff = assignments
             };
         });
