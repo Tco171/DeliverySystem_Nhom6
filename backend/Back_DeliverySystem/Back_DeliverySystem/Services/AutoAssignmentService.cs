@@ -110,6 +110,40 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
                 );
             }
 
+            // Giữ cùng rule với manual assignment:
+            // shop_prepaid phải thanh toán thành công trước khi phân Staff.
+            if (shipment.FeePayer == "shop_prepaid")
+            {
+                var hasPaid = await _db.Payments.AnyAsync(
+                    x =>
+                        x.ShipmentId == shipment.Id &&
+                        x.Status == "paid",
+                    cancellationToken
+                );
+
+                if (!hasPaid)
+                {
+                    var reason =
+                        "Đơn shop_prepaid đang chờ thanh toán trước khi phân công Staff.";
+
+                    await AddEventIfChangedAsync(
+                        shipment.Id,
+                        "waiting_payment",
+                        reason,
+                        cancellationToken
+                    );
+
+                    await _db.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+
+                    return new AutoAssignmentResult(
+                        false,
+                        reason,
+                        AreaId: areaId
+                    );
+                }
+            }
+
             var staffAreas = await _db.StaffAreas
                 .Include(x => x.Staff)
                 .Where(x =>
@@ -122,10 +156,22 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
 
             if (staffAreas.Count == 0)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                var reason =
+                    $"Chưa có Staff khả dụng phụ trách {area.Name}.";
+
+                await AddEventIfChangedAsync(
+                    shipment.Id,
+                    "waiting_assignment",
+                    reason,
+                    cancellationToken
+                );
+
+                await _db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
                 return new AutoAssignmentResult(
                     false,
-                    $"Chưa có Staff khả dụng phụ trách {area.Name}.",
+                    reason,
                     AreaId: areaId
                 );
             }
@@ -150,7 +196,7 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
                     cancellationToken
                 );
 
-            var candidate = staffAreas
+            var candidates = staffAreas
                 .Select(x => new
                 {
                     StaffArea = x,
@@ -161,6 +207,9 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
                         ? count
                         : 0
                 })
+                .ToList();
+
+            var candidate = candidates
                 .Where(x =>
                     x.StaffArea.MaxActiveOrders > 0 &&
                     x.ActiveOrders < x.StaffArea.MaxActiveOrders
@@ -175,11 +224,27 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
 
             if (candidate == null)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                var totalActiveOrders = candidates.Sum(x => x.ActiveOrders);
+                var totalCapacity = candidates.Sum(x => x.StaffArea.MaxActiveOrders);
+                var reason =
+                    $"Tất cả Staff tại {area.Name} đã đạt giới hạn đơn đang xử lý.";
+
+                await AddEventIfChangedAsync(
+                    shipment.Id,
+                    "waiting_assignment",
+                    reason,
+                    cancellationToken
+                );
+
+                await _db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
                 return new AutoAssignmentResult(
                     false,
-                    $"Tất cả Staff tại {area.Name} đã đạt giới hạn đơn đang xử lý.",
-                    AreaId: areaId
+                    reason,
+                    AreaId: areaId,
+                    ActiveOrders: totalActiveOrders,
+                    Capacity: totalCapacity
                 );
             }
 
@@ -199,7 +264,7 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
             _db.ShipmentEvents.Add(new ShipmentEvent
             {
                 ShipmentId = shipment.Id,
-                Status = shipment.Status,
+                Status = "assigned_staff",
                 At = DateTime.UtcNow,
                 Note =
                     $"Hệ thống tự động phân công {candidate.StaffArea.Staff.EmployeeCode} " +
@@ -224,5 +289,37 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private async Task AddEventIfChangedAsync(
+        string shipmentId,
+        string status,
+        string note,
+        CancellationToken cancellationToken)
+    {
+        var latestEvent = await _db.ShipmentEvents
+            .AsNoTracking()
+            .Where(x => x.ShipmentId == shipmentId)
+            .OrderByDescending(x => x.At)
+            .Select(x => new
+            {
+                x.Status,
+                x.Note
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latestEvent?.Status == status &&
+            latestEvent.Note == note)
+        {
+            return;
+        }
+
+        _db.ShipmentEvents.Add(new ShipmentEvent
+        {
+            ShipmentId = shipmentId,
+            Status = status,
+            At = DateTime.UtcNow,
+            Note = note
+        });
     }
 }
