@@ -131,12 +131,12 @@ public sealed class AutoAssignmentService : IAutoAssignmentService
             }
 
             var activeCounts = await (
-                    from assignment in _db.DeliveryAssignments
+                    from existingAssignment in _db.DeliveryAssignments
                     join assignedShipment in _db.Shipments
-                        on assignment.ShipmentId equals assignedShipment.Id
-                    where assignment.IsActive &&
+                        on existingAssignment.ShipmentId equals assignedShipment.Id
+                    where existingAssignment.IsActive &&
                           assignedShipment.DeliveryAreaId == areaId
-                    group assignment by assignment.StaffId
+                    group existingAssignment by existingAssignment.StaffId
                     into grouped
                     select new
                     {
