@@ -15,6 +15,15 @@ namespace Back_DeliverySystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // JWT signing key is supplied through User Secrets (development)
+            // or the Jwt__Key environment variable (deployment), never source control.
+            var jwtSigningKey = builder.Configuration["Jwt:Key"];
+            if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "Missing or weak Jwt:Key. Configure dotnet user-secrets (development) or Jwt__Key (environment).");
+            }
+
             // =====================================================
             // CONTROLLERS
             // =====================================================
@@ -85,7 +94,7 @@ namespace Back_DeliverySystem
                             IssuerSigningKey =
                                 new SymmetricSecurityKey(
                                     Encoding.UTF8.GetBytes(
-                                        jwt["Key"]!
+                                        jwtSigningKey
                                     )
                                 ),
 
