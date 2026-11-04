@@ -20,13 +20,23 @@ export type Status = keyof typeof STATUS;
 
 export type FeePayer = "shop_prepaid" | "recipient" | "deduct_cod";
 
+export interface ServiceArea {
+  id: number;
+  code: string;
+  name: string;
+  type: "ward" | "commune" | "special_zone";
+}
+
+
 export interface ShipmentInput {
   senderName: string;
   senderPhone: string;
   pickupAddress: string;
+  pickupAreaId?: number;
   recipientName: string;
   recipientPhone: string;
   deliveryAddress: string;
+  deliveryAreaId?: number;
   goods: string;
   weightKg: number;
   lengthCm: number;
@@ -420,6 +430,9 @@ async getShipment(id: string): Promise<Shipment> {
 },
 async list(): Promise<Shipment[]> {
     return request<Shipment[]>("/shipments");
+},
+async listAreas(): Promise<ServiceArea[]> {
+    return request<ServiceArea[]>("/areas");
 },
 async quote(input: ShipmentInput): Promise<Quote> {
     validate(input);
