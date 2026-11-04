@@ -258,6 +258,27 @@ class ApiService {
     }
   }
 
+  // Sprint 3: structured ward/commune/special-zone catalog.
+  static Future<List<Map<String, dynamic>>> listAreas() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/v1/areas'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 10));
+
+    if (!_ok(response)) {
+      final data = _decodeResponse(response);
+      throw Exception(data['message'] ?? 'Không tải được danh mục phường/xã.');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw Exception('Danh mục khu vực trả về không hợp lệ.');
+    }
+    return decoded.map((item) =>
+      Map<String, dynamic>.from(item as Map)
+    ).toList();
+  }
+
   static Future<Map<String, dynamic>> createQuote({
     required Map<String, dynamic> order,
   }) async {
