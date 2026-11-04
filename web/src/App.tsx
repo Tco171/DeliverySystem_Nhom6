@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api, money, STATUS } from "./api";
-import type { PickupLocation, Quote, Shipment, ShipmentInput } from "./api";
+import type { PickupLocation, Quote, ServiceArea, Shipment, ShipmentInput } from "./api";
 import "./App.css";
 import IncidentPanel from "./IncidentPanel";
 import StaffSprint2 from "./StaffSprint2";
@@ -329,6 +329,9 @@ function Badge({ shipment }: {
     const [shipments, setShipments] = useState<Shipment[]>([]);
     const [form, setForm] = useState<ShipmentInput>(emptyForm);
     const [quote, setQuote] = useState<Quote | null>(null);
+    const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
+    const [areasLoading, setAreasLoading] = useState(false);
+    const [areasError, setAreasError] = useState("");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -360,6 +363,29 @@ function Badge({ shipment }: {
     const [trackingCode, setTrackingCode] = useState("");
     const [pickupLocations, setPickupLocations] = useState<PickupLocation[]>([]);
     const [pickupName, setPickupName] = useState("");
+
+    // AreaId is chosen from the backend catalog, not inferred from map/address text.
+    useEffect(() => {
+      if (page !== "create" || !user) {
+        setServiceAreas([]);
+        setAreasLoading(false);
+        setAreasError("");
+        return;
+      }
+      let active = true;
+      setAreasLoading(true);
+      setAreasError("");
+      api.listAreas()
+        .then((areas) => { if (active) setServiceAreas(areas); })
+        .catch((error: unknown) => {
+          if (active) {
+            setServiceAreas([]);
+            setAreasError(error instanceof Error ? error.message : "Không tải được danh mục phường/xã.");
+          }
+        })
+        .finally(() => { if (active) setAreasLoading(false); });
+      return () => { active = false; };
+    }, [page, user?.id]);
     const [pickupLoading, setPickupLoading] =
       useState(user?.role === "customer");
       useEffect(() => {
@@ -551,6 +577,10 @@ function Badge({ shipment }: {
     }
     function submitQuote(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (user && !form.deliveryAreaId) {
+            setNotice({ kind: "error", text: "Vui lòng chọn phường/xã giao hàng để hệ thống tự phân công Staff." });
+            return;
+        }
         if (form.pickupLatitude == null || form.pickupLongitude == null ||
             form.deliveryLatitude == null || form.deliveryLongitude == null) {
             setNotice({ kind: "error", text: "Vui lòng chọn cả hai vị trí trên bản đồ trước khi báo giá." });
@@ -895,6 +925,28 @@ function Badge({ shipment }: {
                       {label}
                       <input required maxLength={300} type={key.endsWith("Phone") ? "tel" : "text"} value={form[key]} onChange={(event) => update(key, event.target.value)}/>
                     </label>))}
+
+                  <label>
+                    Phường/xã lấy hàng (không bắt buộc)
+                    <select value={form.pickupAreaId ?? ""} disabled={!user || areasLoading || !!areasError}
+                      onChange={(event) => update("pickupAreaId", event.target.value ? Number(event.target.value) : undefined)}>
+                      <option value="">Chọn khu vực lấy hàng</option>
+                      {serviceAreas.map((area) => <option key={area.id} value={area.id}>{area.name} ({area.code})</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Phường/xã giao hàng {user ? "(bắt buộc)" : ""}
+                    <select required={!!user} value={form.deliveryAreaId ?? ""} disabled={!user || areasLoading || !!areasError}
+                      onChange={(event) => update("deliveryAreaId", event.target.value ? Number(event.target.value) : undefined)}>
+                      <option value="">{areasLoading ? "Đang tải khu vực…" : "Chọn khu vực giao hàng"}</option>
+                      {serviceAreas.map((area) => <option key={area.id} value={area.id}>{area.name} ({area.code})</option>)}
+                    </select>
+                  </label>
+                  <p className="muted full">
+                    {areasError || (!user
+                      ? "Đăng nhập để chọn phường/xã và kích hoạt tự động phân công Staff."
+                      : "Khu vực giao hàng quyết định Staff tự động được phân công; vị trí bản đồ dùng để xác định địa điểm.")}
+                  </p>
 
                   <div className="full">
                       <MapLocationPicker
