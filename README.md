@@ -24,3 +24,23 @@ VITE_USE_MOCK=true: dùng dữ liệu thử nghiệm localStorage, không cần 
 Khi backend sẵn sàng: đổi VITE_USE_MOCK=false, chỉnh URL đúng, khởi động lại Vite. Lỗi API thật không fallback sang mock. Bỏ biến mock cũng dùng API thật. Dữ liệu localStorage không tự chuyển vào DB.
 
 src/api.ts chọn adapter; src/api.real.ts gọi HTTP và giữ 25 endpoint; src/api.mock.ts chứa mô phỏng riêng. Giao diện và kiểu dữ liệu được giữ. Backend/mobile vẫn cần nhóm cung cấp code. Đọc docs/MOCK_MODE.md và docs/AUTH_VA_TICH_HOP.md (các phần HTTP/auth).
+
+## JWT signing key (Backend)
+
+The public repository intentionally does **not** contain a usable `Jwt:Key`. Generate a new secret locally; do not reuse a key previously committed to Git history.
+
+From the repository root, on Windows PowerShell:
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$jwt = [Convert]::ToBase64String($bytes)
+dotnet user-secrets set "Jwt:Key" $jwt --project "backend/Back_DeliverySystem/Back_DeliverySystem/Back_DeliverySystem.csproj"
+Remove-Variable jwt
+```
+
+Run the ASP.NET Core backend in `Development` to load User Secrets. These secrets are stored **outside this repository**, intended for local development (not encrypted production storage). For a deployed backend, configure an independently generated `Jwt__Key` environment variable through the hosting platform's secret manager. Keep it at least 32 UTF-8 bytes long.
+
+Previously issued tokens using the old exposed key must be invalidated by rotating to a new signing key. Tokens signed with the old key will stop working. Do **not** paste the new key into a chat, Issue, commit, or PR. Historical commits may still contain the old key; removing it from the latest file is not a history purge.
