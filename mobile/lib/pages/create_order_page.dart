@@ -46,6 +46,12 @@ class _CreateOrderPageState
 
   String _feePayer = 'shop_prepaid';
 
+  // Sprint 3: khu vực theo AreaId, độc lập với tọa độ bản đồ.
+  List<Map<String, dynamic>> _areas = [];
+  bool _areasLoading = true;
+  int? _pickupAreaId;
+  int? _deliveryAreaId;
+
   bool _loading = false;
 
   Map<String, dynamic>? _quote;
@@ -161,6 +167,30 @@ class _CreateOrderPageState
   // =========================================================
 
   @override
+  void initState() {
+    super.initState();
+    _loadAreas();
+  }
+
+  Future<void> _loadAreas() async {
+    try {
+      final areas = await ApiService.listAreas();
+      if (!mounted) return;
+      setState(() {
+        _areas = areas;
+        _areasLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _areasLoading = false);
+      _show(
+        error.toString().replaceFirst('Exception: ', ''),
+        true,
+      );
+    }
+  }
+
+  @override
   void dispose() {
     final controllers = [
       _senderName,
@@ -204,6 +234,7 @@ class _CreateOrderPageState
       'senderPhone': _senderPhone.text.trim(),
 
       'pickupAddress': _pickup.text.trim(),
+      'pickupAreaId': _pickupAreaId,
       'pickupLatitude': _pickupLocation?.latitude,
       'pickupLongitude': _pickupLocation?.longitude,
 
@@ -214,6 +245,7 @@ class _CreateOrderPageState
 
       'deliveryAddress':
           _delivery.text.trim(),
+      'deliveryAreaId': _deliveryAreaId,
       'deliveryLatitude': _deliveryLocation?.latitude,
       'deliveryLongitude': _deliveryLocation?.longitude,
 
@@ -249,6 +281,10 @@ class _CreateOrderPageState
 
   Future<void> _quoteOrder() async {
     FocusScope.of(context).unfocus();
+    if (_deliveryAreaId == null) {
+      _show('Vui lòng chọn phường/xã giao hàng.', true);
+      return;
+    }
     if (_pickupLocation == null || _deliveryLocation == null) {
       _show('Vui lòng chọn cả hai vị trí trên bản đồ trước khi báo giá.', true);
       return;
@@ -311,6 +347,10 @@ class _CreateOrderPageState
 
   Future<void> _create() async {
     if (_quote == null || _loading) {
+      return;
+    }
+    if (_deliveryAreaId == null) {
+      _show('Vui lòng chọn phường/xã giao hàng trước khi tạo đơn.', true);
       return;
     }
 
@@ -509,6 +549,38 @@ class _CreateOrderPageState
                   hint:
                       'Nhập địa chỉ lấy hàng',
                 ),
+                 const SizedBox(height: 12),
+                 DropdownButtonFormField<int>(
+                   initialValue: _pickupAreaId,
+                   decoration: _input(
+                     'Phường/xã lấy hàng (không bắt buộc)',
+                     icon: Icons.location_city_outlined,
+                   ),
+                   hint: Text(_areasLoading ? 'Đang tải khu vực…' : 'Chọn khu vực lấy hàng'),
+                   isExpanded: true,
+                   items: _areas.map((area) => DropdownMenuItem<int>(
+                     value: (area['id'] as num).toInt(),
+                     child: Text(area['name'].toString(), overflow: TextOverflow.ellipsis),
+                   )).toList(),
+                   onChanged: (_loading || _areasLoading) ? null : (value) {
+                     setState(() {
+                       _pickupAreaId = value;
+                       _quote = null;
+                     });
+                   },
+                 ),
+                 if (_pickupAreaId != null)
+                   Align(
+                     alignment: Alignment.centerRight,
+                     child: TextButton(
+                       onPressed: _loading ? null : () => setState(() {
+                         _pickupAreaId = null;
+                         _quote = null;
+                       }),
+                       child: const Text('Bỏ chọn khu vực lấy hàng'),
+                     ),
+                   ),
+
               ],
             ),
 
@@ -568,6 +640,35 @@ class _CreateOrderPageState
                   hint:
                       'Nhập địa chỉ giao hàng',
                 ),
+                 const SizedBox(height: 12),
+                 DropdownButtonFormField<int>(
+                   initialValue: _deliveryAreaId,
+                   decoration: _input(
+                     'Phường/xã giao hàng *',
+                     icon: Icons.location_city_outlined,
+                   ),
+                   hint: Text(_areasLoading ? 'Đang tải khu vực…' : 'Chọn khu vực giao hàng'),
+                   isExpanded: true,
+                   items: _areas.map((area) => DropdownMenuItem<int>(
+                     value: (area['id'] as num).toInt(),
+                     child: Text(area['name'].toString(), overflow: TextOverflow.ellipsis),
+                   )).toList(),
+                   validator: (value) => value == null ? 'Vui lòng chọn phường/xã giao hàng.' : null,
+                   onChanged: (_loading || _areasLoading) ? null : (value) {
+                     setState(() {
+                       _deliveryAreaId = value;
+                       _quote = null;
+                     });
+                   },
+                 ),
+                 const Padding(
+                   padding: EdgeInsets.only(top: 8),
+                   child: Text(
+                     'Khu vực giao hàng dùng để tự động phân công Staff; vị trí bản đồ dùng để xác định địa điểm.',
+                     style: TextStyle(color: muted, fontSize: 12),
+                   ),
+                 ),
+
               ],
             ),
 
