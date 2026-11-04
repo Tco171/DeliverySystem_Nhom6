@@ -551,6 +551,7 @@ class _CreateOrderPageState
                 ),
                  const SizedBox(height: 12),
                  DropdownButtonFormField<int>(
+                   key: ValueKey('pickup-area-$_pickupAreaId'),
                    initialValue: _pickupAreaId,
                    decoration: _input(
                      'Phường/xã lấy hàng (không bắt buộc)',
@@ -642,6 +643,7 @@ class _CreateOrderPageState
                 ),
                  const SizedBox(height: 12),
                  DropdownButtonFormField<int>(
+                   key: ValueKey('delivery-area-$_deliveryAreaId'),
                    initialValue: _deliveryAreaId,
                    decoration: _input(
                      'Phường/xã giao hàng *',
