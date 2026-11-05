@@ -16,8 +16,8 @@ VITE_USE_MOCK=true: dùng dữ liệu thử nghiệm localStorage, không cần 
 | Email | Mật khẩu | Vai trò |
 |---|---|---|
 | shop@example.com | Express123! | Shop |
-| staff@example.com | Express123! | Giao nhận |
-| operations@example.com | Express123! | Điều hành |
+| staff@express.com | Staff01@123 | Giao nhận |
+| operations@example.com | Operations@123 | Điều hành |
 
 Đăng ký tạo thêm shop thử nghiệm. Chỉ nhập dữ liệu và mật khẩu giả. Các shop mock dùng chung bộ đơn mẫu, chưa cách ly tenant. Hash mật khẩu demo chỉ giúp tránh lưu rõ, không phải bảo mật production. Không có thanh toán thật.
 
