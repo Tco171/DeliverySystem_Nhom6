@@ -1,4 +1,4 @@
-﻿using Back_DeliverySystem.Data;
+using Back_DeliverySystem.Data;
 using Back_DeliverySystem.DTOs.Customer;
 using Back_DeliverySystem.Models;
 using Back_DeliverySystem.Services;
@@ -15,13 +15,16 @@ namespace Back_DeliverySystem.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IVnPayService _vnPayService;
+        private readonly IConfiguration _configuration;
 
         public PaymentsController(
             AppDbContext context,
-            IVnPayService vnPayService)
+            IVnPayService vnPayService,
+            IConfiguration configuration)
         {
             _context = context;
             _vnPayService = vnPayService;
+            _configuration = configuration;
         }
 
 
@@ -205,7 +208,42 @@ namespace Back_DeliverySystem.Controllers
                 paymentUrl
             });
         }
+        [Authorize(Roles = "customer")]
+        [HttpGet("statuses")]
+        public async Task<IActionResult> GetPaymentStatuses()
+        {
+            var customerIdText =
+                User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            if (!int.TryParse(customerIdText, out var customerId))
+                return Unauthorized();
+
+            var payments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.CustomerId == customerId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new
+                {
+                    p.ShipmentId,
+                    p.Status,
+                    p.CreatedAt
+                })
+                .ToListAsync();
+
+            var result = payments
+     .GroupBy(p => p.ShipmentId)
+     .Select(group => new
+     {
+         shipmentId = group.Key,
+         status = group.Any(p => p.Status == "paid")
+             ? "paid"
+             : group.OrderByDescending(p => p.CreatedAt)
+                    .First().Status
+     })
+     .ToList();
+
+            return Ok(result);
+        }
 
         // =========================================================
         // CUSTOMER - XEM TRẠNG THÁI PAYMENT
@@ -383,31 +421,19 @@ namespace Back_DeliverySystem.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok(new
+            // URL được cấu hình cố định ở server, không nhận URL redirect từ query.
+            // Frontend sử dụng JWT để tải trạng thái payment từ API riêng.
+            var webBaseUrl = _configuration["Frontend:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(webBaseUrl) ||
+                !Uri.TryCreate(webBaseUrl, UriKind.Absolute, out var webUri) ||
+                (webUri.Scheme != Uri.UriSchemeHttp && webUri.Scheme != Uri.UriSchemeHttps))
             {
-                success,
+                return StatusCode(500, new { message = "Chưa cấu hình Frontend:BaseUrl hợp lệ." });
+            }
 
-                message =
-                    success
-                        ? "Thanh toán VNPay thành công."
-                        : "Thanh toán VNPay không thành công.",
-
-                paymentId =
-                    payment.Id,
-
-                shipmentId =
-                    payment.ShipmentId,
-
-                amount =
-                    payment.Amount,
-
-                responseCode,
-
-                transactionStatus,
-
-                databaseStatus =
-                    payment.Status
-            });
+            var resultUrl = webBaseUrl.TrimEnd('/') +
+                "/payment/result?paymentId=" + Uri.EscapeDataString(payment.Id);
+            return Redirect(resultUrl);
         }
 
 
@@ -570,5 +596,6 @@ namespace Back_DeliverySystem.Controllers
                 });
             }
         }
+        
     }
 }

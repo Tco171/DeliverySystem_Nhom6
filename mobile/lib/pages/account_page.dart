@@ -194,7 +194,7 @@ class _AccountPageState
       return;
     }
 
-    ApiService.logout();
+    await ApiService.logout();
 
     if (!mounted) {
       return;

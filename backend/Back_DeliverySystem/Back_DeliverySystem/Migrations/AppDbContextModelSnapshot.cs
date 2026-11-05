@@ -22,6 +22,45 @@ namespace Back_DeliverySystem.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Back_DeliverySystem.Models.Area", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Areas");
+                });
+
             modelBuilder.Entity("Back_DeliverySystem.Models.Complaint", b =>
                 {
                     b.Property<int>("Id")
@@ -79,8 +118,12 @@ namespace Back_DeliverySystem.Migrations
                     b.Property<DateTime>("AssignedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("AssignedByUserId")
+                    b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
+
+                    b.Property<string>("AssignmentSource")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("EndedAt")
                         .HasColumnType("datetime2");
@@ -490,6 +533,9 @@ namespace Back_DeliverySystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("DeliveryAreaId")
+                        .HasColumnType("int");
+
                     b.Property<double?>("DeliveryLatitude")
                         .HasColumnType("float");
 
@@ -522,6 +568,9 @@ namespace Back_DeliverySystem.Migrations
                     b.Property<string>("PickupAddress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PickupAreaId")
+                        .HasColumnType("int");
 
                     b.Property<double?>("PickupLatitude")
                         .HasColumnType("float");
@@ -566,6 +615,10 @@ namespace Back_DeliverySystem.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DeliveryAreaId");
+
+                    b.HasIndex("PickupAreaId");
 
                     b.ToTable("Shipments");
                 });
@@ -680,6 +733,39 @@ namespace Back_DeliverySystem.Migrations
                     b.ToTable("Staffs");
                 });
 
+            modelBuilder.Entity("Back_DeliverySystem.Models.StaffArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxActiveOrders")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StaffId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("StaffId", "AreaId")
+                        .IsUnique();
+
+                    b.ToTable("StaffAreas");
+                });
+
             modelBuilder.Entity("Back_DeliverySystem.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -739,8 +825,7 @@ namespace Back_DeliverySystem.Migrations
                     b.HasOne("Back_DeliverySystem.Models.User", null)
                         .WithMany()
                         .HasForeignKey("AssignedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Back_DeliverySystem.Models.Shipment", null)
                         .WithMany()
@@ -826,6 +911,19 @@ namespace Back_DeliverySystem.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Back_DeliverySystem.Models.Shipment", b =>
+                {
+                    b.HasOne("Back_DeliverySystem.Models.Area", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryAreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Back_DeliverySystem.Models.Area", null)
+                        .WithMany()
+                        .HasForeignKey("PickupAreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Back_DeliverySystem.Models.ShipmentEvent", b =>
                 {
                     b.HasOne("Back_DeliverySystem.Models.Shipment", null)
@@ -844,6 +942,30 @@ namespace Back_DeliverySystem.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Back_DeliverySystem.Models.StaffArea", b =>
+                {
+                    b.HasOne("Back_DeliverySystem.Models.Area", "Area")
+                        .WithMany("StaffAreas")
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Back_DeliverySystem.Models.Staff", "Staff")
+                        .WithMany("StaffAreas")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("Back_DeliverySystem.Models.Area", b =>
+                {
+                    b.Navigation("StaffAreas");
+                });
+
             modelBuilder.Entity("Back_DeliverySystem.Models.DeliveryRoute", b =>
                 {
                     b.Navigation("Stops");
@@ -857,6 +979,11 @@ namespace Back_DeliverySystem.Migrations
             modelBuilder.Entity("Back_DeliverySystem.Models.Shipment", b =>
                 {
                     b.Navigation("Events");
+                });
+
+            modelBuilder.Entity("Back_DeliverySystem.Models.Staff", b =>
+                {
+                    b.Navigation("StaffAreas");
                 });
 #pragma warning restore 612, 618
         }
