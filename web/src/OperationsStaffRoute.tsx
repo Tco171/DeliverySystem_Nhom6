@@ -37,6 +37,7 @@ export default function OperationsStaffRoute() {
       orders: "/dispatch",
       routes: "/operations/routes",
       staff: "/operations/staff-management",
+      tracking: "/operations/staff-tracking",
       incidents: "/incidents",
       settlements: "/settlements",
     };
