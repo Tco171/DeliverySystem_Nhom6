@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -28,31 +29,143 @@ namespace Back_DeliverySystem.Controllers
         // GET: /api/v1/operations/dashboard
         // =========================================================
         [HttpGet("dashboard")]
-        public IActionResult Dashboard()
+        public async Task<IActionResult> Dashboard()
         {
-            var userId =
-                User.FindFirstValue(
-                    ClaimTypes.NameIdentifier
-                );
+            // 1. Thống kê đơn hàng
+            var totalOrders = await _context.Shipments
+                .AsNoTracking()
+                .CountAsync();
 
-            var name =
-                User.FindFirstValue(
-                    ClaimTypes.Name
-                );
+            var unassignedOrders = await _context.Shipments
+                .AsNoTracking()
+                .Where(s =>
+                    (s.Status == "pending_pickup" ||
+                     s.Status == "pickup_failed") &&
+                    !_context.DeliveryAssignments.Any(a =>
+                        a.ShipmentId == s.Id && a.IsActive))
+                .CountAsync();
 
-            var role =
-                User.FindFirstValue(
-                    ClaimTypes.Role
-                );
+            var inDeliveryOrders = await _context.Shipments
+                .AsNoTracking()
+                .CountAsync(s =>
+                    s.Status == "out_for_delivery" ||
+                    s.Status == "delivering");
+
+            var deliveredOrders = await _context.Shipments
+                .AsNoTracking()
+                .CountAsync(s => s.Status == "delivered");
+
+            var failedOrders = await _context.Shipments
+                .AsNoTracking()
+                .CountAsync(s => s.Status == "delivery_failed");
+
+            var returnedOrders = await _context.Shipments
+                .AsNoTracking()
+                .CountAsync(s =>
+                    s.Status == "return_pending" ||
+                    s.Status == "returning" ||
+                    s.Status == "returned" ||
+                    s.Status == "return_confirmed");
+
+            // 2. Thống kê nhân viên
+            var availableStaff = await _context.Staffs
+                .AsNoTracking()
+                .CountAsync(s =>
+                    s.Status == "available" && s.IsAvailable);
+
+            var busyStaff = await _context.Staffs
+                .AsNoTracking()
+                .CountAsync(s =>
+                    s.Status == "busy" ||
+                    (s.Status != "inactive" && !s.IsAvailable));
+
+            var inactiveStaff = await _context.Staffs
+                .AsNoTracking()
+                .CountAsync(s => s.Status == "inactive");
+
+            // 3. Số đơn theo nhân viên đang được phân công
+            var ordersByStaff = await (
+                from assignment in _context.DeliveryAssignments.AsNoTracking()
+                where assignment.IsActive
+                join staff in _context.Staffs.AsNoTracking()
+                    on assignment.StaffId equals staff.Id
+                join user in _context.Users.AsNoTracking()
+                    on staff.UserId equals user.Id
+                group assignment by new
+                {
+                    staff.Id,
+                    staff.EmployeeCode,
+                    user.FullName
+                } into grouped
+                orderby grouped.Count() descending
+                select new
+                {
+                    staffId = grouped.Key.Id,
+                    employeeCode = grouped.Key.EmployeeCode,
+                    staffName = grouped.Key.FullName,
+                    totalOrders = grouped.Count()
+                }
+            ).ToListAsync();
+
+            // 4. Số đơn theo khu vực giao hàng
+            var ordersByArea = await (
+                from shipment in _context.Shipments.AsNoTracking()
+                where shipment.DeliveryAreaId != null
+                join area in _context.Areas.AsNoTracking()
+                    on shipment.DeliveryAreaId equals area.Id
+                group shipment by new
+                {
+                    area.Id,
+                    area.Code,
+                    area.Name
+                } into grouped
+                orderby grouped.Count() descending
+                select new
+                {
+                    areaId = grouped.Key.Id,
+                    areaCode = grouped.Key.Code,
+                    areaName = grouped.Key.Name,
+                    totalOrders = grouped.Count()
+                }
+            ).ToListAsync();
+
+            // 5. Tỷ lệ vận hành
+            var resolvedOrders = deliveredOrders + failedOrders;
+
+            var successRate = resolvedOrders == 0
+                ? 0
+                : Math.Round(
+                    (double)deliveredOrders / resolvedOrders * 100, 2);
+
+            var failureRate = resolvedOrders == 0
+                ? 0
+                : Math.Round(
+                    (double)failedOrders / resolvedOrders * 100, 2);
 
             return Ok(new
             {
-                message =
-                    "Truy cập Operations thành công.",
+                totalOrders,
+                unassignedOrders,
+                inDeliveryOrders,
+                deliveredOrders,
+                failedOrders,
+                returnedOrders,
 
-                userId,
-                name,
-                role
+                staff = new
+                {
+                    available = availableStaff,
+                    busy = busyStaff,
+                    inactive = inactiveStaff,
+                    total = availableStaff + busyStaff + inactiveStaff
+                },
+
+                successRate,
+                failureRate,
+
+                ordersByStaff,
+                ordersByArea,
+
+                updatedAt = DateTime.UtcNow
             });
         }
 
@@ -1077,10 +1190,13 @@ namespace Back_DeliverySystem.Controllers
                         _context.Users.AsNoTracking()
                         on staff.UserId equals staffUser.Id
 
-                    join assignedBy in
+                    // LEFT JOIN: auto-assignment has AssignedByUserId = null.
+                    join assignedByUser in
                         _context.Users.AsNoTracking()
                         on assignment.AssignedByUserId
-                        equals assignedBy.Id
+                        equals (int?)assignedByUser.Id into assignedByUsers
+
+                    from assignedBy in assignedByUsers.DefaultIfEmpty()
 
                     where
                         assignment.ShipmentId ==
@@ -1104,10 +1220,15 @@ namespace Back_DeliverySystem.Controllers
                             staffUser.FullName,
 
                         assignedByUserId =
-                            assignedBy.Id,
+                            assignment.AssignedByUserId,
 
                         assignedByName =
-                            assignedBy.FullName,
+                            assignedBy == null
+                                ? "Hệ thống (Auto)"
+                                : assignedBy.FullName,
+
+                        assignmentSource =
+                            assignment.AssignmentSource,
 
                         assignedAt =
                             assignment.AssignedAt,
@@ -1368,6 +1489,12 @@ namespace Back_DeliverySystem.Controllers
             }
 
 
+            // SERIALIZABLE: capacity checks and reassignment are atomic.
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable
+                );
+
             var shipment =
                 await _context.Shipments
                     .FirstOrDefaultAsync(
@@ -1471,6 +1598,14 @@ namespace Back_DeliverySystem.Controllers
             }
 
 
+            var capacityError = await ValidateManualAreaCapacityAsync(
+                shipment, newStaff.Id
+            );
+            if (capacityError != null)
+            {
+                return capacityError;
+            }
+
             var oldStaff =
                 await _context.Staffs
                     .AsNoTracking()
@@ -1501,11 +1636,6 @@ namespace Back_DeliverySystem.Controllers
                 request.Reason.Trim();
 
 
-            await using var transaction =
-                await _context.Database
-                    .BeginTransactionAsync();
-
-
             try
             {
                 var now =
@@ -1533,6 +1663,8 @@ namespace Back_DeliverySystem.Controllers
 
                         AssignedByUserId =
                             operationsUserId.Value,
+
+                        AssignmentSource = "manual",
 
                         AssignedAt =
                             now,
@@ -1732,6 +1864,13 @@ namespace Back_DeliverySystem.Controllers
                 });
             }
 
+            // SERIALIZABLE: prevent parallel manual/auto assignment
+            // from exceeding capacity.
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable
+                );
+
             // ===============================
             // Kiểm tra Shipment
             // ===============================
@@ -1851,6 +1990,14 @@ namespace Back_DeliverySystem.Controllers
                 });
             }
 
+            var capacityError = await ValidateManualAreaCapacityAsync(
+                shipment, staff.Id
+            );
+            if (capacityError != null)
+            {
+                return capacityError;
+            }
+
             // ===============================
             // Tạo Assignment
             // ===============================
@@ -1864,6 +2011,8 @@ namespace Back_DeliverySystem.Controllers
 
                     AssignedByUserId =
                         operationsUserId,
+
+                    AssignmentSource = "manual",
 
                     AssignedAt =
                         DateTime.UtcNow,
@@ -1901,6 +2050,7 @@ namespace Back_DeliverySystem.Controllers
             );
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return Ok(new
             {
@@ -1931,6 +2081,67 @@ namespace Back_DeliverySystem.Controllers
                         assignment.AssignedAt
                 }
             });
+        }
+
+        // Validate structured-area manual assignments. Legacy shipments without
+        // DeliveryAreaId can still be assigned using the existing manual flow.
+        private async Task<IActionResult?> ValidateManualAreaCapacityAsync(
+            Shipment shipment,
+            int staffId)
+        {
+            if (!shipment.DeliveryAreaId.HasValue)
+            {
+                return null;
+            }
+
+            var areaId = shipment.DeliveryAreaId.Value;
+
+            var areaIsActive = await _context.Areas.AsNoTracking()
+                .AnyAsync(x => x.Id == areaId && x.IsActive);
+
+            if (!areaIsActive)
+            {
+                return Conflict(new
+                {
+                    message = "Khu vực giao hàng không tồn tại hoặc đã ngừng hoạt động."
+                });
+            }
+
+            var staffArea = await _context.StaffAreas.AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.AreaId == areaId &&
+                    x.StaffId == staffId &&
+                    x.IsActive);
+
+            if (staffArea == null)
+            {
+                return Conflict(new
+                {
+                    message = "Staff không được phân công phụ trách khu vực giao hàng này."
+                });
+            }
+
+            var activeOrders = await (
+                from assignment in _context.DeliveryAssignments.AsNoTracking()
+                join assignedShipment in _context.Shipments.AsNoTracking()
+                    on assignment.ShipmentId equals assignedShipment.Id
+                where assignment.IsActive &&
+                      assignment.StaffId == staffId &&
+                      assignedShipment.DeliveryAreaId == areaId
+                select assignment.Id
+            ).CountAsync();
+
+            if (activeOrders >= staffArea.MaxActiveOrders)
+            {
+                return Conflict(new
+                {
+                    message = "Staff đã đạt giới hạn đơn tại khu vực giao hàng.",
+                    activeOrders,
+                    maxActiveOrders = staffArea.MaxActiveOrders
+                });
+            }
+
+            return null;
         }
 
         // =========================================================

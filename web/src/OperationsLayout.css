@@ -1,0 +1,13 @@
+/* Operations reuses the Customer design system from App.css. */
+.operations-app .operations-sidebar { background: #113e30; }
+.operations-app .operations-brand { cursor: default; }
+.operations-app .operations-main { min-width: 0; }
+.operations-app .operations-header-title { display: flex; flex-direction: column; gap: 4px; }
+.operations-app .operations-header-title strong { color: #173f31; font-size: 13px; }
+.operations-app .operations-header-title span { color: #69786e; font-size: 12px; }
+.operations-app .operations-username { font-weight: 600; color: #173f31; overflow: hidden; text-overflow: ellipsis; }
+.operations-app .operations-content { min-width: 0; }
+@media (max-width: 720px) {
+  .operations-app .operations-topbar { align-items: flex-start; flex-wrap: wrap; }
+  .operations-app .operations-username { max-width: 145px; }
+}
