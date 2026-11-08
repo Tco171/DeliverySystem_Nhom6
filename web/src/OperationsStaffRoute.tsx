@@ -33,15 +33,17 @@ export default function OperationsStaffRoute() {
   }
 
   function navigate(section: OperationsSection) {
-    const path: Record<OperationsSection, string> = {
-      orders: "/dispatch",
-      routes: "/operations/routes",
-      staff: "/operations/staff-management",
-      incidents: "/incidents",
-      settlements: "/settlements",
-    };
-    window.location.assign(path[section]);
-  }
+  const path: Record<OperationsSection, string> = {
+    dashboard: "/dashboard",
+    orders: "/dispatch",
+    routes: "/operations/routes",
+    staff: "/operations/staff-management",
+    incidents: "/incidents",
+    settlements: "/settlements",
+  };
+
+  window.location.href = path[section];
+}
 
   return (
     <OperationsLayout
