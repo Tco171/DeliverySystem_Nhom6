@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
+import '../widgets/map_location_picker.dart';
 
 import '../services/api_service.dart';
 
@@ -44,9 +46,17 @@ class _CreateOrderPageState
 
   String _feePayer = 'shop_prepaid';
 
+  // Sprint 3: khu vực theo AreaId, độc lập với tọa độ bản đồ.
+  List<Map<String, dynamic>> _areas = [];
+  bool _areasLoading = true;
+  int? _pickupAreaId;
+  int? _deliveryAreaId;
+
   bool _loading = false;
 
   Map<String, dynamic>? _quote;
+  LatLng? _pickupLocation;
+  LatLng? _deliveryLocation;
 
   // =========================================================
   // COLORS
@@ -157,6 +167,30 @@ class _CreateOrderPageState
   // =========================================================
 
   @override
+  void initState() {
+    super.initState();
+    _loadAreas();
+  }
+
+  Future<void> _loadAreas() async {
+    try {
+      final areas = await ApiService.listAreas();
+      if (!mounted) return;
+      setState(() {
+        _areas = areas;
+        _areasLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _areasLoading = false);
+      _show(
+        error.toString().replaceFirst('Exception: ', ''),
+        true,
+      );
+    }
+  }
+
+  @override
   void dispose() {
     final controllers = [
       _senderName,
@@ -200,6 +234,9 @@ class _CreateOrderPageState
       'senderPhone': _senderPhone.text.trim(),
 
       'pickupAddress': _pickup.text.trim(),
+      'pickupAreaId': _pickupAreaId,
+      'pickupLatitude': _pickupLocation?.latitude,
+      'pickupLongitude': _pickupLocation?.longitude,
 
       'recipientName':
           _recipientName.text.trim(),
@@ -208,6 +245,9 @@ class _CreateOrderPageState
 
       'deliveryAddress':
           _delivery.text.trim(),
+      'deliveryAreaId': _deliveryAreaId,
+      'deliveryLatitude': _deliveryLocation?.latitude,
+      'deliveryLongitude': _deliveryLocation?.longitude,
 
       'goods': _goods.text.trim(),
 
@@ -241,6 +281,14 @@ class _CreateOrderPageState
 
   Future<void> _quoteOrder() async {
     FocusScope.of(context).unfocus();
+    if (_deliveryAreaId == null) {
+      _show('Vui lòng chọn phường/xã giao hàng.', true);
+      return;
+    }
+    if (_pickupLocation == null || _deliveryLocation == null) {
+      _show('Vui lòng chọn cả hai vị trí trên bản đồ trước khi báo giá.', true);
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) {
       _show(
@@ -299,6 +347,10 @@ class _CreateOrderPageState
 
   Future<void> _create() async {
     if (_quote == null || _loading) {
+      return;
+    }
+    if (_deliveryAreaId == null) {
+      _show('Vui lòng chọn phường/xã giao hàng trước khi tạo đơn.', true);
       return;
     }
 
@@ -400,6 +452,12 @@ class _CreateOrderPageState
                 ),
 
         onChanged: (_) {
+          // Đổi địa chỉ phải chọn lại điểm trên bản đồ, và báo giá cũ hết hiệu lực.
+          if (identical(controller, _pickup)) {
+            setState(() => _pickupLocation = null);
+          } else if (identical(controller, _delivery)) {
+            setState(() => _deliveryLocation = null);
+          }
           _invalidateQuote();
         },
 
@@ -491,9 +549,57 @@ class _CreateOrderPageState
                   hint:
                       'Nhập địa chỉ lấy hàng',
                 ),
+                 const SizedBox(height: 12),
+                 DropdownButtonFormField<int>(
+                   key: ValueKey('pickup-area-$_pickupAreaId'),
+                   initialValue: _pickupAreaId,
+                   decoration: _input(
+                     'Phường/xã lấy hàng (không bắt buộc)',
+                     icon: Icons.location_city_outlined,
+                   ),
+                   hint: Text(_areasLoading ? 'Đang tải khu vực…' : 'Chọn khu vực lấy hàng'),
+                   isExpanded: true,
+                   items: _areas
+                       .where((area) => (area['isActive'] != false && area['isActive']?.toString() != 'false') || (area['id'] as num).toInt() == _pickupAreaId)
+                       .map((area) {
+                         final code = area['code'] != null ? ' (${area['code']})' : '';
+                         return DropdownMenuItem<int>(
+                           value: (area['id'] as num).toInt(),
+                           child: Text('${area['name']}$code', overflow: TextOverflow.ellipsis),
+                         );
+                       }).toList(),
+                   onChanged: (_loading || _areasLoading) ? null : (value) {
+                     setState(() {
+                       _pickupAreaId = value;
+                       _quote = null;
+                     });
+                   },
+                 ),
+                 if (_pickupAreaId != null)
+                   Align(
+                     alignment: Alignment.centerRight,
+                     child: TextButton(
+                       onPressed: _loading ? null : () => setState(() {
+                         _pickupAreaId = null;
+                         _quote = null;
+                       }),
+                       child: const Text('Bỏ chọn khu vực lấy hàng'),
+                     ),
+                   ),
+
               ],
             ),
 
+            const SizedBox(height: 20),
+
+            MapLocationPicker(
+              title: 'Chọn vị trí lấy hàng',
+              value: _pickupLocation,
+              onChanged: (location) {
+                _invalidateQuote();
+                setState(() => _pickupLocation = location);
+              },
+            ),
             const SizedBox(height: 20),
 
             // ===============================================
@@ -540,9 +646,55 @@ class _CreateOrderPageState
                   hint:
                       'Nhập địa chỉ giao hàng',
                 ),
+                 const SizedBox(height: 12),
+                 DropdownButtonFormField<int>(
+                   key: ValueKey('delivery-area-$_deliveryAreaId'),
+                   initialValue: _deliveryAreaId,
+                   decoration: _input(
+                     'Phường/xã giao hàng *',
+                     icon: Icons.location_city_outlined,
+                   ),
+                   hint: Text(_areasLoading ? 'Đang tải khu vực…' : 'Chọn khu vực giao hàng'),
+                   isExpanded: true,
+                   items: _areas
+                       .where((area) => (area['isActive'] != false && area['isActive']?.toString() != 'false') || (area['id'] as num).toInt() == _deliveryAreaId)
+                       .map((area) {
+                         final code = area['code'] != null ? ' (${area['code']})' : '';
+                         return DropdownMenuItem<int>(
+                           value: (area['id'] as num).toInt(),
+                           child: Text('${area['name']}$code', overflow: TextOverflow.ellipsis),
+                         );
+                       }).toList(),
+                   validator: (value) => value == null ? 'Vui lòng chọn phường/xã giao hàng.' : null,
+                   onChanged: (_loading || _areasLoading) ? null : (value) {
+                     setState(() {
+                       _deliveryAreaId = value;
+                       _quote = null;
+                     });
+                   },
+                 ),
+                 const Padding(
+                   padding: EdgeInsets.only(top: 8),
+                   child: Text(
+                     'Khu vực giao hàng dùng để tự động phân công Staff; vị trí bản đồ dùng để xác định địa điểm.',
+                     style: TextStyle(color: muted, fontSize: 12),
+                   ),
+                 ),
+
               ],
             ),
 
+            const SizedBox(height: 20),
+
+            MapLocationPicker(
+              title: 'Chọn vị trí giao hàng',
+              value: _deliveryLocation,
+              markerColor: Colors.green,
+              onChanged: (location) {
+                _invalidateQuote();
+                setState(() => _deliveryLocation = location);
+              },
+            ),
             const SizedBox(height: 20),
 
             // ===============================================

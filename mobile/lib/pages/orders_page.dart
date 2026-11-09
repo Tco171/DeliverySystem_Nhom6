@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../services/api_service.dart';
 import 'order_detail_page.dart';
 
@@ -11,15 +12,42 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   late Future<List<Map<String, dynamic>>> _future;
+  Map<String, String> _paymentStatuses = {};
+  Timer? _statusRefreshTimer;
+
 
   @override
   void initState() {
     super.initState();
     _future = ApiService.listOrders();
+    _loadPaymentStatuses();
+    // Flutter Web remains mounted when VNPay opens a new browser tab.
+    // Periodically read the backend instead of requiring a full page reload.
+    _statusRefreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted && ApiService.currentToken != null) _loadPaymentStatuses();
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusRefreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _reload() async {
     setState(() => _future = ApiService.listOrders());
+    await _loadPaymentStatuses();
+    try { await _future; } catch (_) { /* FutureBuilder displays the error. */ }
+  }
+
+  Future<void> _loadPaymentStatuses() async {
+    if (ApiService.currentToken == null) return;
+    try {
+      final statuses = await ApiService.getShipmentPaymentStatuses();
+      if (mounted) setState(() => _paymentStatuses = statuses);
+    } catch (_) {
+      // Keep order listing usable while status requests fail.
+    }
   }
 
   @override
@@ -80,7 +108,8 @@ class _OrdersPageState extends State<OrdersPage> {
                     subtitle: Text(
                       '${order['recipientName'] ?? ''}\n'
                       '${order['deliveryAddress'] ?? ''}\n'
-                      'COD: ${order['codAmount'] ?? 0} đ',
+                      'COD: ${order['codAmount'] ?? 0} đ\n'
+                      'Thanh toán: ${order['feePayer'] != 'shop_prepaid' ? 'Theo hình thức khác' : _paymentStatuses[shipmentId] == 'paid' ? 'Đã thanh toán' : _paymentStatuses[shipmentId] == 'pending' ? 'Đang chờ xác nhận' : _paymentStatuses[shipmentId] == 'failed' ? 'Thanh toán thất bại' : 'Chưa thanh toán'}',
                     ),
                     isThreeLine: true,
                     trailing: const Icon(Icons.chevron_right),
@@ -94,7 +123,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   shipmentId: shipmentId,
                                 ),
                               ),
-                            );
+                            ).then((_) { if (mounted) _reload(); });
                           },
                   ),
                 );
