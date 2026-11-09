@@ -12,26 +12,31 @@ class StaffLocationService {
 
   bool get isSharing => _subscription != null;
 
+  /// Cả Tracking (#21) và Geofence (#26) dùng chung kiểm tra quyền GPS foreground.
+  static Future<void> ensureForegroundLocationPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('GPS đang tắt. Vui lòng bật Dịch vụ vị trí rồi thử lại.');
+    }
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      throw Exception('Bạn chưa cấp quyền truy cập vị trí.');
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Quyền vị trí đã bị từ chối vĩnh viễn. Hãy bật lại trong Cài đặt ứng dụng.');
+    }
+  }
+
   Future<void> start({
     required int assignmentId,
     required void Function(Position position) onPosition,
     required void Function(Object error) onError,
   }) async {
     await stop();
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled)
-      throw Exception('GPS đang tắt. Vui lòng bật Dịch vụ vị trí rồi thử lại.');
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied)
-      permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied)
-      throw Exception('Bạn chưa cấp quyền truy cập vị trí.');
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-        'Quyền vị trí đã bị từ chối vĩnh viễn. Hãy bật lại trong Cài đặt ứng dụng.',
-      );
-    }
+    await ensureForegroundLocationPermission();
 
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,

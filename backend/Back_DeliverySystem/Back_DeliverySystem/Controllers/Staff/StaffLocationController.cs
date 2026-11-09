@@ -32,7 +32,8 @@ public class StaffLocationController : ControllerBase
 
         var assignment = await _db.DeliveryAssignments
             .Join(_db.Shipments, a => a.ShipmentId, s => s.Id, (a, s) => new { a, s })
-            .FirstOrDefaultAsync(x => x.a.Id == request.AssignmentId && x.a.StaffId == staff.Id && x.a.IsActive && x.a.Status == "accepted");
+            .FirstOrDefaultAsync(x => x.a.Id == request.AssignmentId && x.a.StaffId == staff.Id && x.a.IsActive &&
+                (x.a.Status == "accepted" || x.a.Status == "in_progress"));
         if (assignment == null)
             return Conflict(new { message = "Chỉ có thể chia sẻ vị trí cho nhiệm vụ đang được bạn thực hiện." });
 

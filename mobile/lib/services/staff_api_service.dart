@@ -17,9 +17,13 @@ class StaffAssignment {
   final String senderName;
   final String senderPhone;
   final String pickupAddress;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
   final String recipientName;
   final String recipientPhone;
   final String deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final String goods;
   final num weightKg;
   final num codAmount;
@@ -34,9 +38,13 @@ class StaffAssignment {
     required this.senderName,
     required this.senderPhone,
     required this.pickupAddress,
+    required this.pickupLatitude,
+    required this.pickupLongitude,
     required this.recipientName,
     required this.recipientPhone,
     required this.deliveryAddress,
+    required this.deliveryLatitude,
+    required this.deliveryLongitude,
     required this.goods,
     required this.weightKg,
     required this.codAmount,
@@ -52,9 +60,13 @@ class StaffAssignment {
     'senderName': senderName,
     'senderPhone': senderPhone,
     'pickupAddress': pickupAddress,
+    'pickupLatitude': pickupLatitude,
+    'pickupLongitude': pickupLongitude,
     'recipientName': recipientName,
     'recipientPhone': recipientPhone,
     'deliveryAddress': deliveryAddress,
+    'deliveryLatitude': deliveryLatitude,
+    'deliveryLongitude': deliveryLongitude,
     'goods': goods,
     'weightKg': weightKg,
     'codAmount': codAmount,
@@ -65,6 +77,10 @@ class StaffAssignment {
   factory StaffAssignment.fromJson(Map<String, dynamic> j) {
     String s(String key) => j[key]?.toString() ?? '';
     num n(String key) => j[key] is num ? j[key] as num : 0;
+    double? coordinate(String key) {
+      final value = j[key];
+      return value is num ? value.toDouble() : double.tryParse('$value');
+    }
 
     return StaffAssignment(
       assignmentId: (j['assignmentId'] as num).toInt(),
@@ -74,9 +90,13 @@ class StaffAssignment {
       senderName: s('senderName'),
       senderPhone: s('senderPhone'),
       pickupAddress: s('pickupAddress'),
+      pickupLatitude: coordinate('pickupLatitude'),
+      pickupLongitude: coordinate('pickupLongitude'),
       recipientName: s('recipientName'),
       recipientPhone: s('recipientPhone'),
       deliveryAddress: s('deliveryAddress'),
+      deliveryLatitude: coordinate('deliveryLatitude'),
+      deliveryLongitude: coordinate('deliveryLongitude'),
       goods: s('goods'),
       weightKg: n('weightKg'),
       codAmount: n('codAmount'),
