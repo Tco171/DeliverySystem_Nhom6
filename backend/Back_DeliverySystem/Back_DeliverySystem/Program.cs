@@ -15,31 +15,38 @@ namespace Back_DeliverySystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // JWT signing key is supplied through User Secrets (development)
+            // or the Jwt__Key environment variable (deployment), never source control.
+            var jwtSigningKey = builder.Configuration["Jwt:Key"];
+            if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "Missing or weak Jwt:Key. Configure dotnet user-secrets (development) or Jwt__Key (environment).");
+            }
+
             // =====================================================
             // CONTROLLERS
             // =====================================================
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.AddService<ShipmentAutoAssignmentFilter>();
+            });
 
             builder.Services.AddOpenApi();
 
 
             // =====================================================
             // VNPAY CONFIGURATION
-            // Đọc cấu hình từ appsettings.json:
-            //
-            // "VnPay": {
-            //     "PaymentUrl": "...",
-            //     "TmnCode": "...",
-            //     "HashSecret": "...",
-            //     "ReturnUrl": "...",
-            //     "IpnUrl": "..."
-            // }
             // =====================================================
             builder.Services.Configure<VnPayOptions>(
                 builder.Configuration.GetSection("VnPay")
             );
 
             builder.Services.AddScoped<IVnPayService, VnPayService>();
+
+            // Tự động phân Staff theo phường/xã/đặc khu và tải hiện tại.
+            builder.Services.AddScoped<IAutoAssignmentService, AutoAssignmentService>();
+            builder.Services.AddScoped<ShipmentAutoAssignmentFilter>();
 
 
             // =====================================================
@@ -87,7 +94,7 @@ namespace Back_DeliverySystem
                             IssuerSigningKey =
                                 new SymmetricSecurityKey(
                                     Encoding.UTF8.GetBytes(
-                                        jwt["Key"]!
+                                        jwtSigningKey
                                     )
                                 ),
 
@@ -166,6 +173,11 @@ namespace Back_DeliverySystem
             // SEED DATA
             // =====================================================
             await SeedData.InitializeAsync(
+                app.Services
+            );
+
+            // Sprint 3: phường/xã/đặc khu + StaffArea + capacity.
+            await Sprint3SeedData.InitializeAsync(
                 app.Services
             );
 
