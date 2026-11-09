@@ -34,10 +34,15 @@ button.primary:hover:not(:disabled) { background: #bb441b; }
 
 .app { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 100vh; }
 .sidebar {
-  position: sticky; top: 0; height: 100vh;
+  position: sticky; top: 0; height: 100vh; max-height: 100vh;
   background: #113e30; color: #fff;
-  padding: 35px 20px; display: flex; flex-direction: column;
+  padding: 24px 16px; display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
 }
+.sidebar::-webkit-scrollbar { width: 5px; }
+.sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.15); }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
 .brand {
   display: flex; align-items: center;
   color: white; text-decoration: none;
@@ -49,15 +54,16 @@ button.primary:hover:not(:disabled) { background: #bb441b; }
   margin-right: 9px; border-radius: 10px; transform: rotate(-6deg);
 }
 .brand-dot { color: #eafa9a; }
-.nav-caption { font-size: 10px; letter-spacing: 1.2px; color: #b2c9bd; margin: 48px 10px 15px; }
+.nav-caption { font-size: 10px; letter-spacing: 1.2px; color: #b2c9bd; margin: 24px 10px 10px; }
 .nav {
-  display: flex; gap: 14px; align-items: center; width: 100%;
-  margin: 6px 0; text-align: left; border: 0; background: transparent;
-  color: #dce9e1; padding: 14px;
+  display: flex; gap: 12px; align-items: center; width: 100%;
+  margin: 2px 0; text-align: left; border: 0; border-radius: 8px; background: transparent;
+  color: #dce9e1; padding: 10px 12px; font-size: 13px; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 .nav span { font-size: 20px; width: 20px; }
 .nav.active, .nav:hover:not(:disabled) { background: #295641; color: #edffb0; }
-.sidebar-note { margin-top: auto; border-top: 1px solid #416453; padding: 24px 10px 0; font-size: 12px; line-height: 1.8; }
+.sidebar-note { margin-top: 20px; margin-bottom: 10px; flex-shrink: 0; border-top: 1px solid #416453; padding: 16px 10px 0; font-size: 12px; line-height: 1.6; }
 .sidebar-note p { color: #b2c9bd; }
 .topbar {
   min-height: 72px; background: white; border-bottom: 1px solid #e4eae5;

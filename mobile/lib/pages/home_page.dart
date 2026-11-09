@@ -210,7 +210,7 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    ApiService.logout();
+    await ApiService.logout();
 
     if (!mounted) return;
 

@@ -113,6 +113,10 @@ namespace Back_DeliverySystem.Controllers
                         pickupAddress =
                             shipment.PickupAddress,
 
+                        pickupLatitude = shipment.PickupLatitude,
+
+                        pickupLongitude = shipment.PickupLongitude,
+
                         recipientName =
                             shipment.RecipientName,
 
@@ -121,6 +125,10 @@ namespace Back_DeliverySystem.Controllers
 
                         deliveryAddress =
                             shipment.DeliveryAddress,
+
+                        deliveryLatitude = shipment.DeliveryLatitude,
+
+                        deliveryLongitude = shipment.DeliveryLongitude,
 
                         goods =
                             shipment.Goods,
